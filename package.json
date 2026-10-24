@@ -1,11 +1,11 @@
 {
   "name": "lumen-desktop",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Multi-screen Windows web dashboard",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test test.js v2.test.js v3.test.js v4.test.js v5.test.js v6.test.js v61.test.js v62.test.js v64.test.js v65.test.js v651.test.js v66.test.js v67.test.js",
+    "test": "node --test test.js v2.test.js v3.test.js v4.test.js v5.test.js v6.test.js v61.test.js v62.test.js v64.test.js v65.test.js v651.test.js v66.test.js v67.test.js v71.test.js",
     "smoke": "electron . --smoke-test",
     "build": "node build.js"
   },

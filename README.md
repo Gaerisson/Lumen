@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-7.0.0-8b789c)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-7.1.0-8b789c)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -25,8 +25,8 @@ Lumen compose un bureau multi-écrans sans remplacer l’app Codex. Chaque fenê
 | Sécurité, chambre et réveil | Projet courant, durée observée et commandes masquées des secrets connus |
 | Personnes détectées : caméra à la demande | Graphiques CPU et RAM locaux ou distants |
 | Réseau UniFi, NAS et Proxmox via HA | Partage distant authentifié, en lecture seule |
-| Résumé du matin, voix et bulletin radio optionnels | Reprise après erreur de quota, module explicite sur le PC hôte |
-| Spotify et autres lecteurs Home Assistant | Modules indépendants et recherche de réglages |
+| Résumé du matin, voix et bulletin radio optionnels | Veille dans les fenêtres existantes, sans doublons |
+| Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
 
@@ -38,10 +38,10 @@ Active uniquement ce qui t’intéresse dans **Modules & PC distants**. Les conn
 - **Frigate / go2rtc** : détection de personnes, vidéo seulement lorsqu’elle est utile, restitution du format de la caméra, audio et bips configurables. Les flux masqués sont déchargés.
 - **OpenAI Codex** : lecture du quota local par App Server, avec secours par les journaux locaux. Un PC distant peut fournir ces données sans partager son compte.
 - **Lumen Remote** : CPU/RAM, quota et, en option, titres de projets. Les commandes, brouillons, clés HA et identifiants Codex ne traversent pas ce protocole.
-- **Spotify / media_player** : titre courant, artiste, lecture/pause et morceau précédent/suivant par Home Assistant. Pas de connexion OAuth Spotify directe dans cette version.
+- **Spotify Web API** : connexion guidée OAuth PKCE, pochette, titre, artiste, appareil, lecture/pause, précédent/suivant et volume. Les jetons sont chiffrés par Windows. La lecture s’effectue sur un appareil Spotify existant ; Lumen ne fournit pas de moteur de streaming.
 - **Ubiquiti / UniFi, NAS et Proxmox** : capteurs exposés par Home Assistant ; les mesures indisponibles restent signalées comme telles.
 - **Sleep as Android / ResMed myAir** : entités Home Assistant configurables, résumé de la dernière nuit et routines de réveil. La disponibilité dépend de ces intégrations.
-- **Open-Meteo, RSS, franceinfo** : météo, titres et bulletin radio facultatif. La voix Windows fonctionne localement ; Mistral nécessite sa propre clé et peut facturer les lectures.
+- **Open-Meteo, RSS, NRJ, RFI, franceinfo** : météo, titres et bulletin radio facultatif. La voix Windows fonctionne localement ; Mistral nécessite sa propre clé et peut facturer les lectures.
 - **Twinkle Tray** : réglage de luminosité sur les écrans compatibles, si activé et installé séparément.
 
 ![Réglages des modules](docs/screens/modules.jpg)
@@ -61,28 +61,38 @@ Le binaire Windows est actuellement non signé : la distribution publique est un
 3. Sur le PC client, ajoute l’adresse du PC hôte et sa clé. Choisis-le comme source du quota.
 4. Ajoute d’autres PC de la même manière pour leurs capteurs CPU/RAM.
 
-Le serveur écoute uniquement sur `127.0.0.1` par défaut ; le réseau local nécessite une option explicite. Le port par défaut est `32145`. Sur un réseau non fiable, utilise un VPN privé ou un reverse proxy HTTPS. Le protocole HTTP seul ne chiffre pas le transport. Aucun port du pare-feu n’est ouvert par Lumen.
+Le serveur écoute uniquement sur `127.1.0.1` par défaut ; le réseau local nécessite une option explicite. Le port par défaut est `32145`. Sur un réseau non fiable, utilise un VPN privé ou un reverse proxy HTTPS. Le protocole HTTP seul ne chiffre pas le transport. Aucun port du pare-feu n’est ouvert par Lumen.
 
 Un **agent sans interface** fournit seulement les capteurs d’un PC équipé de Node.js :
 
 ```powershell
-node agent.cjs --token-file C:\Private\lumen-pair.key --host 127.0.0.1 --port 32145
+node agent.cjs --token-file C:\Private\lumen-pair.key --host 127.1.0.1 --port 32145
 ```
+
+Depuis les sources, utilise la commande ci-dessus. Dans l’archive Windows, le point d’entrée est `resources/app/agent.cjs` ; Node.js reste nécessaire.
 
 Crée un secret aléatoire d’au moins 32 caractères dans ce fichier privé. Pour le réseau local, choisis explicitement une adresse d’écoute adaptée. Les arguments du processus ne contiennent pas la clé.
 
-### Reprise Codex après quota
+### Connexion Spotify guidée
 
-Ce module est **désactivé par défaut**. Sur le PC Codex, il utilise le protocole officiel [Codex App Server](https://learn.chatgpt.com/docs/app-server).
+1. Active **Spotify** dans les modules et ouvre son assistant.
+2. Crée une application dans le [tableau de bord Spotify Developer](https://developer.spotify.com/dashboard), avec l’API Web.
+3. Enregistre exactement cette Redirect URI : **http://127.0.0.1:32146/callback**.
+4. Copie le **Client ID public**, puis clique sur **Enregistrer et connecter Spotify**. Ne saisis jamais de Client Secret.
+5. Autorise l’accès sur Spotify, puis vérifie la connexion dans Lumen. Ouvre Spotify sur un de tes appareils pour le voir apparaître.
 
-Il exige un dernier tour en échec avec `UsageLimitExceeded` et un relevé récent montrant du quota disponible. Il ignore les chats actifs, archivés, interrompus volontairement ou en attente de confirmation. Chaque reprise est enregistrée avant envoi pour éviter les doublons. Les permissions du projet sont conservées ; une action nécessitant le client interactif n’est pas approuvée automatiquement.
+Le contrôle requiert Premium. Les applications en mode développement restent soumises aux [limites Spotify](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide), notamment les utilisateurs autorisés. Lumen n’est pas une application Spotify approuvée pour une distribution étendue. [Documentation PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow).
 
-Tu peux préparer un message dans Lumen, sinon il envoie un message de reprise. **Les brouillons non envoyés de l’app Codex ne sont pas accessibles.** Cette version examine les 100 chats récemment modifiés. La reprise est testée avec un serveur simulé ; l’exécution réelle dépend de la version du CLI et des outils requis par chaque projet. Elle n’effectue aucun achat, changement de crédit ni reset.
+### Flash audio et préécoute
+
+Dans **Audio & réveil**, choisis NRJ, RFI, franceinfo ou un podcast RSS personnel. Le dernier bulletin récent est sélectionné, avec volume, vitesse et durée maximale réglables. Les publicités éventuelles dépendent des radios. **Flash local** lit les titres RSS avec la voix Windows, sans publicité ajoutée par Lumen. Les aperçus sont limités à 20 secondes et possèdent un bouton d’arrêt. La voix Mistral exige une action explicite avant un aperçu facturable.
+
+Lumen affiche l’activité Codex en lecture seule. La reprise automatique des chats a été retirée : aucun message de reprise n’est envoyé.
 
 ## Performances & contrôle
 
 - Mode économe par défaut : fond statique, petites animations conservées.
-- Écrans masqués : minuteries et animations suspendues.
+- Écrans masqués : minuteries et animations suspendues. La veille réutilise les fenêtres existantes et restaure leurs positions.
 - Caméras inutilisées : document vidéo déchargé, connexions et décodage arrêtés.
 - Événements HA regroupés ; historiques et nœuds DOM réutilisés.
 - Graphiques stables entre deux mesures, valeurs numériques alignées.
@@ -121,7 +131,7 @@ Les tests ne déclenchent aucune vraie alarme et ne règlent pas la luminosité 
 
 ## Organisation
 
-`modules.js` décrit les connecteurs ; `modules-settings.js` leurs options. `home-assistant.js` collecte les états, `power-reading.js` normalise la puissance, `remote.js` expose le partage limité, `telemetry.js` mesure CPU/RAM, `resume-manager.js` contrôle la reprise. `live-dom.js` préserve les éléments visuels lors des actualisations.
+`modules.js` décrit les connecteurs ; `modules-settings.js` leurs options. `home-assistant.js` collecte les états, `power-reading.js` normalise la puissance, `remote.js` expose le partage limité, `telemetry.js` mesure CPU/RAM, `spotify.js` gère OAuth et l’API Spotify. `live-dom.js` préserve les éléments visuels lors des actualisations.
 
 Consulte [SECURITY.md](SECURITY.md) pour la protection des données et [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) pour les crédits.
 
