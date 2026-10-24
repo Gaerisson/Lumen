@@ -1,0 +1,31 @@
+.mascot-task-ring{position:absolute;width:280px;height:280px;left:calc(50% - 140px);top:calc(50% - 140px);pointer-events:none;opacity:0;animation:mascot-task-turn 16s linear infinite;animation-play-state:paused;transition:opacity .8s;contain:layout paint}
+.mascot-task-ring svg{display:block;width:100%;height:100%;fill:none;stroke:var(--accent);stroke-width:1.4;stroke-linecap:round;stroke-dasharray:65 130 3 130;opacity:.7}
+.mascot-work-pulses{position:absolute;bottom:31px;left:50%;transform:translateX(-50%);display:flex;gap:5px;align-items:center;height:16px;opacity:0;transition:opacity .8s}
+.mascot-work-pulses i{display:block;width:3px;height:8px;border-radius:3px;background:var(--accent);animation:mascot-working 1.8s ease-in-out infinite;animation-play-state:paused}
+.mascot-work-pulses i:nth-child(2){height:13px;animation-delay:-.6s}.mascot-work-pulses i:nth-child(3){animation-delay:-1.2s}
+.ambient-mascot[data-work-state=working] .mascot-task-ring{opacity:.65;animation-play-state:running}
+.ambient-mascot[data-work-state=working] .mascot-work-pulses{opacity:.8}
+.ambient-mascot[data-work-state=working] .mascot-work-pulses i{animation-play-state:running}
+.ambient-mascot[data-work-state=working] .mascot-float{animation-duration:6s}
+.ambient-mascot[data-work-state=resting] .mascot-float{animation-duration:18s}
+.ambient-mascot:not([data-work-state=working]) .ambient-orbit,.ambient-mascot:not([data-work-state=working]) .ambient-spark,.ambient-mascot:not([data-work-state=working]) .bot-antenna:before{animation-play-state:paused}
+.ambient-mascot[data-work-state=resting] .bot-face i{animation:none;transform:scaleY(.32);box-shadow:none;opacity:.7}
+.ambient-mascot[data-work-state=waiting] .bot-face i,.ambient-mascot[data-work-state=unknown] .bot-face i{animation:none;transform:scaleY(.65);box-shadow:none;opacity:.65}
+.ambient-work-info{min-height:82px;width:min(370px,100%);text-align:center;padding:4px 12px 0;position:relative}
+.ambient-work-pill{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:144px;padding:8px 15px;border:1px solid var(--line);border-radius:99px;background:var(--glow);color:var(--muted);font-size:12px;line-height:1.2;letter-spacing:.3px}
+.ambient-work-info[data-work-state=working] .ambient-work-pill{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.ambient-work-info[data-work-state=working] .ambient-work-emblem{display:flex;gap:2px;align-items:center;height:12px}
+.ambient-work-emblem i{display:none}
+.ambient-work-info[data-work-state=working] .ambient-work-emblem i{display:block;width:2px;height:6px;background:currentColor;border-radius:2px;animation:mascot-working 1.8s ease-in-out infinite}
+.ambient-work-info[data-work-state=working] .ambient-work-emblem i:nth-child(2){height:10px;animation-delay:-.6s}.ambient-work-info[data-work-state=working] .ambient-work-emblem i:nth-child(3){animation-delay:-1.2s}
+.ambient-work-info:not([data-work-state=working]) .ambient-work-emblem{width:7px;height:7px;border:1px solid currentColor;border-radius:50%;opacity:.7}
+.ambient-work-info[data-work-state=waiting] .ambient-work-emblem{border-radius:1px;width:7px;height:8px;border-top:0;border-bottom:0;border-left-width:2px;border-right-width:2px}
+.ambient-work-project{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;font-size:12px;line-height:1.5;font-weight:450;color:var(--text);margin:9px 0 0;overflow-wrap:anywhere}
+.ambient-work-caption{display:block;font-size:9px;color:var(--muted);line-height:1.6;margin-top:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+@keyframes mascot-task-turn{to{transform:rotate(360deg)}}
+@keyframes mascot-working{0%,100%{transform:scaleY(.65)}50%{transform:scaleY(1.15)}}
+@media(max-height:1100px) and (min-width:1301px){.ambient-home-hero .ambient-mascot{height:185px}.ambient-home-hero .mascot-task-ring{width:220px;height:220px;left:calc(50% - 110px);top:calc(50% - 110px)}.ambient-home-hero .ambient-work-info{padding-top:0;margin-top:-7px;min-height:76px}.ambient-work-project{font-size:11px}.ambient-work-pill{font-size:12px;padding:7px 14px}}
+@media(max-width:650px){.ambient-work-info{margin-top:-12px;max-width:320px}.ambient-home-hero .ambient-date{margin-bottom:14px}}
+@media(prefers-reduced-motion:reduce){.mascot-task-ring,.mascot-work-pulses i,.ambient-work-emblem i{animation:none!important;transition:none!important}}
+.no-motion .mascot-task-ring,.no-motion .mascot-work-pulses i,.no-motion .ambient-work-emblem i{animation:none!important;transition:none!important}
+.surface-paused .mascot-task-ring,.surface-paused .mascot-work-pulses i,.surface-paused .ambient-work-emblem i{animation-play-state:paused!important}

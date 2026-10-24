@@ -1,0 +1,21 @@
+node_modules/
+dist/
+data/
+*-data/
+Microsoft/
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+*.log
+*-result.json
+*-failure.json
+diagnostics*.json
+settings.json
+Local State
+*-preview.png
+v*-*.png
+smoke-*.png
+preview-*.png
+*.zip

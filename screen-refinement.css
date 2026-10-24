@@ -1,0 +1,56 @@
+/* Calm motion on persistent elements. No whole-card opacity animation on polls. */
+.ambient-card,.network-panel,.ambient-codex-work{box-shadow:inset 0 1px 0 #ffffff0b,0 12px 32px #00000005}
+.ambient-card,.network-panel{contain:layout style}
+.ambient-home-grid{align-items:stretch}
+.ambient-home-grid>.network-panel{grid-row:auto}
+.ambient-home{padding:24px;display:flex;flex-direction:column}
+.house-card-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.house-card-heading .eyebrow{font-size:9px;color:var(--muted);letter-spacing:1.5px}
+.house-alarm{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted);white-space:nowrap}
+.house-alarm.protected{color:var(--accent)}
+.house-room{display:flex;align-items:center;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+.house-room-icon{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--line);border-radius:12px;color:var(--accent);background:var(--glow)}
+.house-room>strong{font-size:35px;font-weight:300;letter-spacing:-1px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.house-room strong small{font-size:12px;color:var(--muted);margin-left:3px}
+.house-room>div{margin-left:auto;min-width:0}.house-room b{display:block;font-size:11px;font-weight:500}.house-room div>span{display:block;font-size:9px;color:var(--muted);margin-top:5px}
+.house-electricity{padding-top:20px;flex:1;display:flex;flex-direction:column}
+.house-power-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:9px}
+.house-power-heading>span:first-child{display:flex;gap:5px;align-items:center}
+.power-day{white-space:nowrap;color:var(--accent);font-variant-numeric:tabular-nums}.power-day small{font-size:8px;color:var(--muted)}
+.house-power-value{font-size:clamp(35px,3.1vw,60px);line-height:1.2;font-weight:250;letter-spacing:-2px;padding:13px 0 12px;font-variant-numeric:tabular-nums}
+.house-power-value small{font-size:13px;color:var(--muted);letter-spacing:0;margin-left:7px}
+.power-flow{height:2px;position:relative;overflow:hidden;background:var(--line);border-radius:4px;color:var(--accent)}
+.power-flow i{position:absolute;left:-25%;width:25%;height:2px;background:linear-gradient(90deg,transparent,currentColor,transparent);animation:house-current 7s linear infinite}
+.house-electricity:has([data-status=offline]) .power-flow i,.house-electricity:has([data-status=stale]) .power-flow i,.house-electricity:has([data-status=unavailable]) .power-flow i,.house-electricity:has([data-status=curve]) .power-flow i{animation-play-state:paused;visibility:hidden}
+.power-trend{margin-top:16px;height:78px;color:var(--accent);flex-shrink:0}
+.power-trend svg{width:100%;height:56px;overflow:visible;display:block}
+.power-line{fill:none;stroke:currentColor;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.power-grid{fill:none;stroke:var(--line);stroke-width:.5;stroke-dasharray:2 5}
+.power-trend-axis{display:flex;justify-content:space-between;margin-top:7px;font-size:8px;color:var(--muted);font-variant-numeric:tabular-nums}
+.power-trend-empty{display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted)}
+.power-source{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:8px;color:var(--muted);padding-top:12px;margin-top:auto;min-height:22px}
+[data-power-source]{max-width:58%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.power-freshness{display:flex;gap:5px;align-items:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.power-freshness i{width:4px;height:4px;background:var(--muted);border-radius:50%;flex-shrink:0}
+.power-freshness[data-status=live] i{background:var(--accent)}
+.power-freshness[data-status=stale],.power-freshness[data-status=offline]{color:#b99b78}
+.ambient-home .house-next-alarm{display:flex;align-items:center;gap:7px;font-size:9px;padding-top:13px;margin-top:13px}
+.ambient-weather{display:flex;flex-direction:column}
+.ambient-weather .ambient-weather-values{margin-top:48px;gap:16px;min-height:96px}
+.ambient-weather .ambient-weather-art{top:7px;right:10px}
+.ambient-weather .ambient-weather-values strong{font-size:clamp(62px,5.5vw,100px);font-variant-numeric:tabular-nums}
+.ambient-weather>p{margin-top:auto;display:flex;justify-content:space-between;gap:12px;min-height:20px}
+.weather-outlook{display:grid!important;grid-template-columns:repeat(3,1fr);gap:6px!important;padding:19px 0;margin:12px 0 18px!important;border-top:1px solid var(--line);align-items:center}
+.weather-outlook>div{display:flex;flex-direction:column;gap:9px;padding-left:9px;border-left:1px solid var(--line)}
+.weather-outlook span{font-size:9px;color:var(--muted)}.weather-outlook b{font-size:23px;font-weight:300;font-variant-numeric:tabular-nums}.weather-outlook small{font-size:8px;color:var(--muted)}
+.weather-minmax{white-space:nowrap;font-variant-numeric:tabular-nums}
+.network-key-metrics strong,.network-traffic b,.network-stat-strip b{font-variant-numeric:tabular-nums}
+.network-live-dot{animation:none;opacity:.9;transition:cx .85s,cy .85s}
+.ambient-home-grid .network-overview{gap:8px;flex-wrap:wrap}
+.energy-now+.power-source{margin:0 0 15px;padding:0;min-height:18px}
+@keyframes house-current{to{transform:translateX(500%)}}
+@media(min-width:1900px){.ambient-home{padding:30px}.house-room{padding:25px 0}.house-power-value{font-size:66px}.house-power-heading{font-size:11px}.power-source{font-size:9px}.house-alarm{font-size:10px}.house-room>strong{font-size:43px}.house-card-heading .eyebrow{font-size:10px}}
+@media(max-height:1100px) and (min-width:1301px){.ambient-home{padding:19px}.house-room{padding:12px 0}.house-electricity{padding-top:13px}.house-power-value{font-size:43px;padding:9px 0}.power-trend{margin-top:10px;height:64px}.power-trend svg{height:43px}.ambient-weather .ambient-weather-values{margin-top:35px;min-height:82px}.weather-outlook{padding:12px 0;margin-top:10px!important;margin-bottom:12px!important}}
+@media(max-width:850px){.ambient-home-grid{align-items:start}.house-power-value{font-size:45px}.house-card-heading{flex-wrap:wrap}.ambient-weather .ambient-weather-values{margin-top:42px}}
+@media(prefers-reduced-motion:reduce){.power-flow i{animation:none}.network-live-dot{transition:none}}
+.no-motion .power-flow i{animation:none}.surface-paused .power-flow i{animation-play-state:paused}

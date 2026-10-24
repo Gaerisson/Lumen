@@ -1,0 +1,1 @@
+document.getElementById('title').textContent=new URLSearchParams(location.search).get('title')||'Lumen';document.querySelectorAll('[data-window]').forEach(b=>b.onclick=()=>window.lumen.invoke('window',b.dataset.window));

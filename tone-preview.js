@@ -1,0 +1,3 @@
+let tonePreviewAudio=null,tonePreviewButton=null,tonePreviewSeq=0;
+async function previewTone(tone,volume,button){const seq=++tonePreviewSeq;if(tonePreviewAudio){tonePreviewAudio.pause();tonePreviewAudio.src='';}tonePreviewButton?.classList.remove('is-playing');tonePreviewButton=button;try{const clip=await window.lumen.invoke('soundPreview',{tone,volume:Number(volume)});if(seq!==tonePreviewSeq)return;const audio=tonePreviewAudio=new Audio(clip.url);audio.volume=clip.volume;button?.classList.add('is-playing');audio.onended=()=>button?.classList.remove('is-playing');await audio.play();}catch{button?.classList.remove('is-playing');if(typeof toast==='function')toast('Lecture du son indisponible.');}}
+window.addEventListener('beforeunload',()=>tonePreviewAudio?.pause());

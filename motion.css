@@ -1,0 +1,70 @@
+/* A few persistent compositor layers: no canvas redraw, random particles or
+   full-screen opacity pulse when live data arrives. */
+body.animated-background::before,body.animated-background::after{content:none!important}
+.lumen-atmosphere{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:-1;contain:strict;opacity:.72}
+.lumen-atmosphere>i{position:absolute;inset:-22%;will-change:transform;transform-origin:center}
+.atmosphere-aurora{background:radial-gradient(ellipse at 20% 27%,color-mix(in srgb,var(--accent) 19%,transparent),transparent 44%),radial-gradient(ellipse at 81% 72%,color-mix(in srgb,var(--network-blue,#8c9ee6) 15%,transparent),transparent 43%);animation:lumen-aurora 52s ease-in-out infinite alternate}
+.atmosphere-silk{background:radial-gradient(ellipse at 72% 24%,color-mix(in srgb,var(--accent) 11%,transparent),transparent 42%),radial-gradient(ellipse at 28% 86%,#a98bc013,transparent 42%);animation:lumen-silk 67s ease-in-out infinite alternate}
+.atmosphere-grain{position:absolute;inset:0;background-image:radial-gradient(var(--text) .55px,transparent .7px);background-size:8px 8px;opacity:.028;mask-image:linear-gradient(120deg,#000,transparent)}
+body:not(.animated-background) .lumen-atmosphere,.overlay .lumen-atmosphere,.alert .lumen-atmosphere{display:none}
+body.standby{background:var(--bg)!important}
+.standby .ambient-shell{background:transparent}
+.standby[data-ambient=night] .lumen-atmosphere{opacity:.42}
+.standby[data-ambient=day] .lumen-atmosphere{opacity:.78}
+body[data-theme=noir] .lumen-atmosphere{opacity:.25}
+.dashboard-page{min-width:0;isolation:isolate}
+.dashboard-tabs button{transition:background-color .3s,color .3s,box-shadow .3s}
+.dashboard-tabs button:hover{background:var(--glow)}
+.dashboard-tabs button.selected{box-shadow:inset 0 0 0 1px var(--line)}
+.weather-art{width:112px;height:105px;display:block;overflow:visible}
+.weather-symbol{animation:none;filter:none;opacity:1;flex-shrink:0}
+.weather-art .weather-sun{color:color-mix(in srgb,var(--accent) 40%,#d9b87b);fill:color-mix(in srgb,var(--accent) 10%,transparent)}
+.weather-rays{transform-origin:64px 46px;animation:weather-rays 45s linear infinite}
+.weather-moon{fill:var(--glow);animation:weather-moon 9s ease-in-out infinite}
+.weather-cloud{fill:color-mix(in srgb,var(--panel) 85%,var(--accent));animation:weather-cloud 8s ease-in-out infinite}
+.weather-cloudy .weather-sun,.weather-cloudy .weather-moon{transform:translate(12px,-4px) scale(.9);transform-origin:center}
+.weather-drops{color:var(--network-blue,var(--accent))}
+.weather-drops path{animation:weather-rain 1.8s linear infinite;animation-delay:calc(var(--drop)*-.6s)}
+.weather-flakes path{animation:weather-snow 4s ease-in-out infinite;animation-delay:calc(var(--drop)*-1.3s);transform-box:fill-box;transform-origin:center}
+.weather-fog{animation:weather-fog 7s ease-in-out infinite;opacity:.55}
+.weather-bolt{color:#d6b57d;fill:currentColor;stroke:none;animation:weather-bolt 7s ease-in-out infinite}
+.weather-unknown{stroke-dasharray:2 7;opacity:.4}
+.weather-hero:after{content:'';position:absolute;top:-100px;right:-80px;width:300px;height:300px;border-radius:50%;border:1px solid var(--line);box-shadow:0 0 0 35px color-mix(in srgb,var(--accent) 2%,transparent),0 0 0 70px color-mix(in srgb,var(--accent) 1%,transparent);pointer-events:none}
+.weather-top{position:relative;z-index:1}
+.ambient-weather{position:relative;overflow:hidden}
+.ambient-weather .ambient-weather-art{position:absolute;right:6px;top:5px;margin:0;opacity:.7;pointer-events:none}
+.ambient-weather-art .weather-art{width:95px;height:89px}
+.ambient-weather>.eyebrow{display:block;max-width:calc(100% - 65px);position:relative;line-height:1.7}
+.ambient-weather>.ambient-weather-values{position:relative;margin-top:28px;flex-wrap:wrap;gap:12px 20px}
+.ambient-weather-values>span{flex:1;min-width:90px}
+.ambient-weather .weather-condition{font-weight:400;font-size:12px;display:block;color:var(--text);line-height:1.6;letter-spacing:0}
+.briefing-board .weather-symbol .weather-art{width:112px;height:105px}
+.news-deck{display:grid;grid-template-columns:minmax(0,1fr);flex:1;min-width:0;overflow:hidden}
+.ambient-news .news-slide{grid-area:1/1;min-width:0;width:100%;border:0;border-radius:0;background:transparent;text-align:left;padding:7px 0;font-size:12px;line-height:1.8;color:var(--muted);white-space:normal;opacity:0;visibility:hidden;transform:translateY(12px);transition:opacity .65s ease,transform .65s cubic-bezier(.16,1,.3,1),visibility .65s}
+.ambient-news .news-slide.is-current{opacity:1;visibility:visible;transform:none}
+.news-slide span{color:var(--accent);white-space:nowrap}
+.news-deck-controls{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.news-deck-controls button{padding:3px 8px;font-size:17px;min-width:28px;min-height:28px}
+.news-deck-controls small{font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}
+.news-deck-controls [data-news-pause]{font-size:13px;margin-left:4px}
+.ambient-news button:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+.ambient-mascot .bot-face i{animation:mascot-gaze 18s ease-in-out infinite}
+.ambient-mascot .bot-antenna:before{animation:mascot-antenna 6s ease-in-out infinite}
+@keyframes lumen-aurora{from{transform:translate(-3%,1%) rotate(-5deg) scale(1)}to{transform:translate(6%,-3%) rotate(9deg) scale(1.12)}}
+@keyframes lumen-silk{from{transform:translate(4%,3%) rotate(6deg)}to{transform:translate(-5%,-4%) rotate(-8deg) scale(1.08)}}
+@keyframes weather-rays{to{transform:rotate(360deg)}}
+@keyframes weather-moon{50%{transform:translateY(-3px) rotate(-4deg);transform-origin:64px 50px}}
+@keyframes weather-cloud{50%{transform:translateX(5px)}}
+@keyframes weather-rain{0%{transform:translate(2px,-3px);opacity:0}20%,65%{opacity:.8}100%{transform:translate(-3px,9px);opacity:0}}
+@keyframes weather-snow{0%{transform:translate(0,-3px) rotate(0);opacity:0}25%,70%{opacity:.7}100%{transform:translate(4px,10px) rotate(60deg);opacity:0}}
+@keyframes weather-fog{50%{transform:translateX(5px);opacity:.8}}
+@keyframes weather-bolt{0%,100%{opacity:.4;transform:translateY(-1px)}50%{opacity:.85;transform:translateY(2px)}}
+@keyframes mascot-gaze{0%,19%,24%,56%,64%,100%{transform:translateX(0) scaleY(1)}20%,22%{transform:translateX(2px) scaleY(1)}58%{transform:translateX(0) scaleY(.35)}60%{transform:translateX(0) scaleY(1)}}
+@keyframes mascot-antenna{50%{transform:scale(1.22)}}
+@media(max-width:650px){.ambient-weather-art .weather-art{width:78px;height:73px}.ambient-weather>.eyebrow{font-size:8px}.ambient-news .eyebrow{width:100%}.news-deck{flex-basis:65%}.news-deck-controls{margin-left:auto}.weather-art{width:90px;height:85px}.weather-top{gap:8px}}
+@media(prefers-reduced-motion:reduce){.lumen-atmosphere *,.weather-art *,.ambient-mascot *{animation:none!important}.news-slide{transition:none!important}}
+.no-motion .lumen-atmosphere *,.no-motion .weather-art *{animation:none!important}
+.surface-paused *,.surface-paused *::before,.surface-paused *::after{animation-play-state:paused!important;transition:none!important}
+/* Backdrop blur is expensive to recomposite over a moving full-screen field.
+   The cards already have a translucent fill; keep blur on interactive popovers. */
+.standby .network-panel,.standby .ambient-card,.standby .ambient-codex-work{backdrop-filter:none}
