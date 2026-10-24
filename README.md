@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-7.1.0-8b789c)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-7.1.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -61,15 +61,15 @@ Le binaire Windows est actuellement non signé : la distribution publique est un
 3. Sur le PC client, ajoute l’adresse du PC hôte et sa clé. Choisis-le comme source du quota.
 4. Ajoute d’autres PC de la même manière pour leurs capteurs CPU/RAM.
 
-Le serveur écoute uniquement sur `127.1.0.1` par défaut ; le réseau local nécessite une option explicite. Le port par défaut est `32145`. Sur un réseau non fiable, utilise un VPN privé ou un reverse proxy HTTPS. Le protocole HTTP seul ne chiffre pas le transport. Aucun port du pare-feu n’est ouvert par Lumen.
+Le serveur écoute uniquement sur `127.0.0.1` par défaut ; le réseau local nécessite une option explicite. Le port par défaut est `32145`. Sur un réseau non fiable, utilise un VPN privé ou un reverse proxy HTTPS. Le protocole HTTP seul ne chiffre pas le transport. Aucun port du pare-feu n’est ouvert par Lumen.
 
 Un **agent sans interface** fournit seulement les capteurs d’un PC équipé de Node.js :
 
 ```powershell
-node agent.cjs --token-file C:\Private\lumen-pair.key --host 127.1.0.1 --port 32145
+node src/agent.cjs --token-file C:\Private\lumen-pair.key --host 127.0.0.1 --port 32145
 ```
 
-Depuis les sources, utilise la commande ci-dessus. Dans l’archive Windows, le point d’entrée est `resources/app/agent.cjs` ; Node.js reste nécessaire.
+Depuis les sources, utilise la commande ci-dessus. Dans les nouveaux builds Windows, le point d’entrée est `resources/app/src/agent.cjs` ; l’archive 7.1.0 déjà publiée utilise encore `resources/app/agent.cjs`. Node.js reste nécessaire.
 
 Crée un secret aléatoire d’au moins 32 caractères dans ce fichier privé. Pour le réseau local, choisis explicitement une adresse d’écoute adaptée. Les arguments du processus ne contiennent pas la clé.
 
@@ -114,25 +114,39 @@ npm start
 Pour isoler le profil de développement : définis `LUMEN_DATA_DIR` vers un dossier privé. Pour produire une version portable :
 
 ```powershell
-node build.js
+npm run build
 ```
 
-Sortie : `dist/Lumen/`. `LUMEN_OUTPUT` permet de choisir une autre destination ; `--update` met à jour un dossier existant après fermeture de Lumen. Les profils utilisateurs ne doivent jamais être ajoutés à une archive de distribution.
+Sortie : `dist/Lumen/`. `LUMEN_OUTPUT` permet de choisir une autre destination ; `npm run build -- --update` met à jour un dossier existant après fermeture de Lumen. Les profils utilisateurs ne doivent jamais être ajoutés à une archive de distribution.
 
 Validation native, avec profils et services simulés :
 
 ```powershell
 npm run smoke
-npx electron . --home-screen-test
-npx electron . --performance-test
+npm run smoke:home
+npm run smoke:performance
 ```
 
 Les tests ne déclenchent aucune vraie alarme et ne règlent pas la luminosité matérielle. Le protocole remote est testé sur la boucle locale ; une seconde machine physique n’a pas encore servi à la validation.
 
-## Organisation
+## Organisation du projet
 
-`modules.js` décrit les connecteurs ; `modules-settings.js` leurs options. `home-assistant.js` collecte les états, `power-reading.js` normalise la puissance, `remote.js` expose le partage limité, `telemetry.js` mesure CPU/RAM, `spotify.js` gère OAuth et l’API Spotify. `live-dom.js` préserve les éléments visuels lors des actualisations.
+```text
+Lumen/
+├── src/
+│   ├── main/          # Processus Electron, services et connecteurs
+│   ├── renderer/      # Pages, scripts d’interface et styles
+│   ├── shared/        # Calculs et règles partagés
+│   └── agent.cjs      # Agent de capteurs distant
+├── assets/icons/      # Icônes de l’application
+├── tests/
+│   ├── unit/          # Tests unitaires
+│   └── smoke/         # Vérifications natives Windows
+├── scripts/           # Compilation et contrôle de structure
+├── docs/              # Installation, développement, crédits et captures
+└── .github/workflows/ # Validation automatique
+```
 
-Consulte [SECURITY.md](SECURITY.md) pour la protection des données et [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) pour les crédits.
+Les profils locaux et résultats de tests restent exclus du dépôt. Pour commencer : [installation](docs/installation.md), [développement](docs/development.md), [sécurité](SECURITY.md), [crédits des services](docs/third-party-notices.md).
 
 Lumen est un projet indépendant de Gaerisson, vibecodé avec OpenAI Codex. Les noms et marques des connecteurs appartiennent à leurs propriétaires respectifs. Aucune affiliation officielle n’est revendiquée. © 2026 Gaerisson. Tous droits réservés sur le code original ; voir [LICENSE](LICENSE).
