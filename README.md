@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.1.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -39,6 +39,15 @@ Au premier lancement, **une seule fenêtre de bienvenue** : connecte les service
 | Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
+
+## Nouveautés 8.2
+
+- **PC distants** : recherche automatique sur le réseau, test de connexion, adresses simplifiées et clé copiée sans casser les clients existants. [Jumeler deux PC](docs/remote.md).
+- **Studio plus clair** : écran → fenêtre → modules, cadre du contenu et proportions réelles de la fenêtre.
+- **Proxmox personnalisable** : VM, CT, nœuds ou sauvegardes ; métriques et entités choisies pour chaque carte.
+- **Options par carte** : titre, densité, PC à afficher, entités NAS et nombre de titres d’actualité.
+
+![Connexion entre PC](docs/screens/remote.jpg)
 
 ## Nouveautés 8.1
 

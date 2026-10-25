@@ -12,6 +12,14 @@ La navigation principale propose **Mon studio**, **Connexions**, **Apparence**. 
 
 ## Composer plus facilement
 
+Le studio compose le **contenu d’une fenêtre Lumen**, pas le bureau Windows. Choisis d’abord l’écran physique, puis la fenêtre dans la liste. Le cadre intitulé « Contenu de la fenêtre » montre uniquement ses modules, avec les proportions de cette fenêtre. « Plein écran » utilise les proportions du moniteur. Plusieurs fenêtres peuvent partager un écran.
+
+Clique sur une carte pour ouvrir ses options sous l’aperçu : titre et présentation compacte ou détaillée. **Proxmox** propose tout, nœuds, VM et CT, VM seules, CT seuls ou sauvegardes. Choisis les métriques CPU, mémoire, disque, état et sauvegarde, ou sélectionne précisément les entités dans Home Assistant. Ces choix s’appliquent à cette carte ; une autre carte peut afficher une autre vue du même serveur.
+
+Le type VM / CT provient des appareils de l’intégration Home Assistant. Les intégrations plus anciennes peuvent ne pas préciser ce type : la vue « VM et conteneurs » et la sélection d’entités permettent de limiter l’affichage. Les données manquantes restent indiquées comme indisponibles. Certaines [entités Proxmox, dont les sauvegardes](https://www.home-assistant.io/integrations/proxmoxve/), doivent être activées dans Home Assistant.
+
+**Ordinateurs** choisit un PC ou tous les PC. **NAS** filtre les entités exposées par le connecteur. **Actualités** choisit le nombre de titres. Le [guide PC distants](remote.md) explique le partage, la recherche réseau et les erreurs de jumelage.
+
 Les boutons ↶ / ↷ et `Ctrl+Z` / `Ctrl+Y` annulent ou rétablissent les changements avant sauvegarde. Les flèches déplacent la carte sélectionnée ; `Maj` augmente le pas. `Suppr` retire une carte. **Répartir** organise les cartes sans chevauchement. Le sélecteur Écran déplace un panneau sur un autre moniteur.
 
 **Mes capteurs** permet de choisir jusqu’à huit entités Home Assistant dans la liste du studio. Un module peut montrer une température, un niveau de batterie, une mesure électrique ou un autre état. Les courbes restent locales et ne sont collectées que pour les capteurs sélectionnés. Une entité supprimée ou indisponible est signalée, sans valeur inventée.

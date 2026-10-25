@@ -1,5 +1,15 @@
 # Versions de Lumen
 
+## 8.2.0
+
+- **PC distants** : découverte LAN à la demande, visibilité désactivable, test authentifié et erreurs compréhensibles. Un nom de PC ou une IP suffit pour l’adresse. Copier une clé ne renouvelle plus les clés existantes ; les changements de clé et les requêtes en cours ne réutilisent plus une ancienne erreur en cache.
+- **Connexions** : étapes séparées pour partager ce PC et afficher un autre PC. Sauvegarder les PC conserve les fenêtres et la connexion Home Assistant. La découverte ne diffuse aucun quota, projet ou secret.
+- **Studio** : l’aperçu représente clairement le contenu de la fenêtre choisie, avec ses proportions. Un rafraîchissement en cours ne peut plus écraser une modification commencée entre-temps.
+- **Personnalisation par carte** : titre et densité ; choix d’un ordinateur, des entités NAS et du nombre de titres d’actualité.
+- **Proxmox** : filtres nœuds, VM, CT, invités ou sauvegardes, métriques au choix et sélection d’entités. Reconnaissance des appareils via les registres Home Assistant, avec compatibilité des anciennes entités françaises. Les valeurs indisponibles restent distinctes de zéro ; aucune commande Proxmox n’est envoyée.
+
+Validation : 133 tests unitaires, 38 contrôles du parcours Windows avec deux PC simulés et tests de l’accueil sans connexion vidéo au repos. Archive publique et conservation des profils vérifiées séparément. La découverte nécessite Lumen 8.2 sur les deux PC ; un pare-feu ou l’isolation réseau peuvent imposer la saisie manuelle de l’adresse.
+
 ## 8.1.0
 
 - **Mes capteurs** : jusqu’à huit entités Home Assistant par module, choisies dans une liste avec recherche. Valeurs, unités, disponibilité et courbes locales ; historique limité à 120 points par capteur, à raison d’un point toutes les 15 secondes. Seules les entités sélectionnées sont exposées au widget. Aucune commande d’appareil n’est envoyée.
