@@ -40,6 +40,7 @@ npm run smoke
 npm run smoke:home
 npm run smoke:regression
 npm run smoke:performance
+npm run smoke:setup
 ```
 
 Ces scénarios utilisent leurs propres profils et services simulés. Les résultats,

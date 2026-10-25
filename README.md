@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-7.1.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.0.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -15,6 +15,16 @@ Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la car
 </div>
 
 Lumen compose un bureau multi-écrans sans remplacer l’app Codex. Chaque fenêtre peut rester au premier plan, se réduire, passer en plein écran ou accueillir plusieurs éléments. Les positions sont mémorisées. Un raccourci libère immédiatement les écrans.
+
+## Prise en main
+
+Au premier lancement, **une seule fenêtre de bienvenue** : connecte les services utiles, choisis tes capteurs dans les listes Home Assistant, puis l’écran de chaque alerte. Le **studio visuel** permet d’ajouter, déplacer et redimensionner les modules à la souris, écran par écran. Les installations existantes conservent leurs panneaux.
+
+![Guide de bienvenue](docs/screens/welcome.jpg)
+
+![Studio de composition](docs/screens/studio.jpg)
+
+[Le guide de configuration](docs/setup.md) détaille les étapes, Frigate en direct, les alertes et les mises à jour. Les réglages avancés restent repliés pour garder une navigation simple. À 100 % de capacité Codex restante, aucun décompte n’est affiché ; à quota épuisé, le temps de recharge reste visible.
 
 ## Un écran utile, même au repos
 
@@ -52,7 +62,7 @@ Télécharge l’archive Windows d’une version, extrais-la dans un dossier acc
 
 **Ne copie pas le dossier `data/` de ton PC principal.** Les secrets sont chiffrés pour le profil Windows d’origine. Connecte chaque PC et jumelle-les dans les options si nécessaire.
 
-Le binaire Windows est actuellement non signé : la distribution publique est une version de développement. La signature de code et les mises à jour automatiques ne sont pas incluses.
+Les mises à jour stables sont téléchargées depuis GitHub, vérifiées par SHA-256 puis installées à la fermeture si l’option est activée. Le dossier `data/` reste préservé. Les options de téléchargement et d’installation sont indépendantes, dans **Connexions**. Le binaire Windows est actuellement non signé ; le SHA-256 ne remplace pas une signature de code.
 
 ### Quota et capteurs distants
 

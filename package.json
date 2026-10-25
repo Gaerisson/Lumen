@@ -1,6 +1,6 @@
 {
   "name": "lumen-desktop",
-  "version": "7.1.0",
+  "version": "8.0.0",
   "description": "Multi-screen Windows web dashboard",
   "main": "src/main/main.js",
   "scripts": {
@@ -12,7 +12,8 @@
     "smoke:home": "electron . --home-screen-test",
     "smoke:regression": "electron . --regression-test",
     "smoke:performance": "electron . --performance-test",
-    "agent": "node src/agent.cjs"
+    "agent": "node src/agent.cjs",
+    "smoke:setup": "electron . --setup-test"
   },
   "devDependencies": {
     "electron": "45.0.0",

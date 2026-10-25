@@ -7,6 +7,9 @@ const telemetry=new Telemetry(),remoteServer=new RemoteServer(),remoteClient=new
 const {SurfaceScheduler}=require('./surface-scheduler.js');const surfaces=new SurfaceScheduler();
 function registerScene(win,priority){surfaces.add(win,{priority,getContents:()=>[win.webContents]});}
 const { defaults, normalize, rectangles, visibleBounds } = require('../shared/layout.js');
+const {freshConfig,displayFor,presetWindow}=require('../shared/setup.js');
+const {serviceUrl,testHomeConnection,FrigateCatalog}=require('./setup-services.js');
+const {PortableUpdater}=require('./portable-updater.js');
 const { readQuota } = require('./quota-source.js');
 const {QuotaMonitor}=require('./quota-live.js');
 const quotaMonitor=new QuotaMonitor({readLocal:readQuota,onChange:()=>{dataCache={};}});
@@ -24,7 +27,7 @@ const {watchStream,isCamera,isCameraPage}=require('./stream-watch.js');
 const {standbyRoles,standbyNight,standbyNightHours}=require('../shared/standby-policy.js');let standbyNightState=null;
 const standbyWindows=new Map();let standbyActive=false,standbyHoldUntil=0,automationQueue=Promise.resolve();
 const engine=new HouseEngine();let houseTimer,morningWindow,morningUntil=0,morningKey='',presenceAlert=null,mutedAlert=null;
-const brightness=new Brightness(()=>config,{dry:process.argv.includes('--smoke-test')||process.argv.includes('--performance-test')||process.argv.includes('--regression-test')||process.argv.includes('--home-screen-test')});
+const brightness=new Brightness(()=>config,{dry:process.argv.includes('--smoke-test')||process.argv.includes('--performance-test')||process.argv.includes('--regression-test')||process.argv.includes('--home-screen-test')||process.argv.includes('--setup-test')});
 let audioBriefing;
 let haClient, alertWindow, activeAlert, dismissedAlert, alertTimer;
 const {RadioBulletin,radioSources}=require('./radio.js');const radioBulletin=new RadioBulletin(()=>config,(...args)=>session.defaultSession.fetch(...args));
@@ -32,8 +35,9 @@ const integrations=new Integrations(()=>config,(...args)=>session.defaultSession
 const homeSmoke=process.argv.includes('--home-screen-test');
 const regressionSmoke=process.argv.includes('--regression-test');
 const performanceSmoke=process.argv.includes('--performance-test');
-const smoke = process.argv.includes('--smoke-test')||performanceSmoke||regressionSmoke||homeSmoke;
-const dataDir = smoke?path.join(testResults,'profiles',homeSmoke?'home-screen':regressionSmoke?'regression':performanceSmoke?'performance':'smoke'):process.env.LUMEN_DATA_DIR||path.join(path.dirname(process.execPath),'data');
+const setupSmoke=process.argv.includes('--setup-test');
+const smoke = process.argv.includes('--smoke-test')||performanceSmoke||regressionSmoke||homeSmoke||setupSmoke;
+const dataDir = smoke?path.join(testResults,'profiles',setupSmoke?'setup':homeSmoke?'home-screen':regressionSmoke?'regression':performanceSmoke?'performance':'smoke'):process.env.LUMEN_DATA_DIR||path.join(path.dirname(process.execPath),'data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setPath('sessionData', dataDir);
@@ -41,6 +45,8 @@ nativeTheme.themeSource = 'dark';
 app.setName('Lumen');
 if (process.platform === 'win32') app.setAppUserModelId('fr.lumen.desktop');
 let config, control, tray, hidden = false;
+const frigateCatalog=new FrigateCatalog(()=>config);
+let updater;
 const previewWindows=new Set(),hiddenWindows=new Set();
 function trackPreview(win){previewWindows.add(win);win.once('closed',()=>previewWindows.delete(win));return win;}
 function closePreviews(){for(const win of previewWindows)if(!win.isDestroyed())win.destroy();previewWindows.clear();}
@@ -84,7 +90,7 @@ function manager() {
     webPreferences: { ...prefs, preload: path.join(__dirname,'./preload.js') } });
   const editor=control;editor.setMenu(null);
   editor.once('ready-to-show',()=>{if(!editor.isDestroyed()&&!app.quitting){editor.showInactive();editor.show();editor.focus();}});
-  local(editor, 'index.html').catch(e=>{if(!editor.isDestroyed()&&!editor._lumenClosing)errors.push({type:'settings-load',message:e.message});});
+  local(editor, config.setupComplete===false?'onboarding.html':'index.html').catch(e=>{if(!editor.isDestroyed()&&!editor._lumenClosing)errors.push({type:'settings-load',message:e.message});});
   editor.on('close',()=>{editor._lumenClosing=true;closePreviews();});
   editor.on('closed',()=>{if(control===editor)control=null;if(!app.quitting&&!smoke)setImmediate(houseStep);});
 }
@@ -263,7 +269,7 @@ function evaluateAlerts(){
   if(next.kind==='intrusion')brightness.transition('wake').catch(()=>{});
   activeAlert={...next,startedAt:next.startedAt||(next.kind==='wake'?snapshot.entities.sleepEvent.state:new Date().toISOString())};dataCache={};
   if(alertWindow&&!alertWindow.isDestroyed())alertWindow.close();
-  const monitor=cameraDisplay();
+  const monitor=displayFor(screen.getAllDisplays(),config,next.kind==='wake'?'wake':'intrusion',cameraDisplay());
   alertWindow=new BrowserWindow({...monitor.bounds,frame:false,fullscreen:true,alwaysOnTop:true,show:false,backgroundColor:'#0c141b',webPreferences:{...prefs,preload:path.join(__dirname,'./preload.js')}});
   registerScene(alertWindow,100);local(alertWindow,'widget.html',{type:'alert'});if(!hidden){alertWindow.showInactive();alertWindow.moveTop();if(next.kind!=='intrusion'&&outdoorFocus?.win?.isVisible())outdoorFocus.win.moveTop();}
 }
@@ -273,7 +279,7 @@ function showMorning(key,silent=false){
   if((!config.morningEnabled&&!silent)||activeAlert?.kind==='intrusion')return;
   if(morningWindow&&!morningWindow.isDestroyed())morningWindow.close();
   morningKey=key;morningUntil=Date.now()+Math.max(1,Number(config.morningMinutes)||8)*60000;dataCache={};
-  const d=cameraDisplay();endStandby(silent);if(!silent)brightness.transition('wake').catch(()=>{});
+  const d=displayFor(screen.getAllDisplays(),config,'morning',cameraDisplay());endStandby(silent);if(!silent)brightness.transition('wake').catch(()=>{});
   morningWindow=new BrowserWindow({...d.bounds,frame:false,fullscreen:true,alwaysOnTop:true,show:false,backgroundColor:'#0c141b',webPreferences:{...prefs,preload:path.join(__dirname,'./preload.js')}});
   if(silent)trackPreview(morningWindow);registerScene(morningWindow,60);local(morningWindow,'widget.html',{type:'briefing',silent:silent?'1':'0'});if(!hidden){morningWindow.showInactive();if(outdoorFocus?.win?.isVisible())outdoorFocus.win.moveTop();}
   const shown=morningWindow;shown.on('closed',()=>{if(morningWindow===shown){morningUntil=0;morningWindow=null;dataCache={};}});
@@ -369,6 +375,41 @@ async function action(event, name, payload) {
   if(name==='window'){const win=ownerOf(event.sender);if(!win)return false;if([...standbyWindows.values()].includes(win)&&['close','minimize'].includes(payload)){suspendStandby();return true;}if(payload==='close')win.close();if(payload==='minimize')win.minimize();if(payload==='fullscreen')win.setFullScreen(!win.isFullScreen());if(payload==='settings')manager();return true;}
   if(name==='external'){const url=httpUrl(payload);await shell.openExternal(url.href);return true;}
   if (!control || control.isDestroyed() || event.sender.id !== control.webContents.id) throw Error('Action réservée à l’atelier');
+  if(name==='setupGuide'){await local(control,'onboarding.html');return true;}
+  if(name==='frigateCameras')return config.frigateUrl?frigateCatalog.read():[];
+  if(name==='updateStatus')return updater.snapshot();
+  if(name==='updateCheck')return updater.check();
+  if(name==='updateDownload')return updater.download();
+  if(name==='updateInstall'){if(!updater.canInstall())throw Error('Aucune mise à jour prête');updater.installRequested=true;app.quit();return true;}
+  if(name==='updateOptions'){config.autoUpdateEnabled=payload?.enabled!==false;config.autoUpdateInstallOnQuit=payload?.installOnQuit!==false;save();return updater.snapshot();}
+  if(name==='setupConnect'){
+    if(payload?.service==='home'){
+      const url=serviceUrl(payload.url),token=payload.token|| (config.haToken?(await safeStorage.decryptStringAsync(Buffer.from(config.haToken,'base64'))).result:'');
+      if(!token)throw Error('Renseigne un jeton longue durée Home Assistant.');
+      const result=await testHomeConnection(url,token);
+      if(payload.token){if(!(await safeStorage.isAsyncEncryptionAvailable()))throw Error('Chiffrement Windows indisponible');config.haToken=(await safeStorage.encryptStringAsync(token)).toString('base64');}
+      config.haUrl=url;config.features.home=true;save();await startHome();for(let i=0;i<20&&haClient&&!haClient.registry.size;i++)await new Promise(r=>setTimeout(r,100));return{...result,catalog:haClient?.catalog()||result.catalog};
+    }
+    if(payload?.service==='frigate'){
+      const url=serviceUrl(payload.url),cameras=await frigateCatalog.read(url),stream=new URL(url);stream.port='1984';stream.pathname='/';stream.search='';stream.hash='';
+      const streamUrl=serviceUrl(payload.streamUrl||stream.href);config.frigateUrl=url;config.go2rtcUrl=streamUrl;config.features.cameras=true;save();return{url,streamUrl,cameras};
+    }
+    throw Error('Service inconnu');
+  }
+  if(name==='finishSetup'){
+    const all=screen.getAllDisplays(),next=structuredClone(config);next.entities={...next.entities,...payload.entities};next.haAlarm=next.entities.alarm||'';
+    for(const k of ['intrusionDisplayId','wakeDisplayId','morningDisplayId','outdoorDisplayId'])next[k]=all.find(d=>String(d.id)===String(payload.displays?.[k]))?.id||screen.getPrimaryDisplay().id;
+    next.features={...next.features,...payload.features};if(next.entities.networkGateway||next.entities.networkLatency)next.features.network=true;
+    next.alertsEnabled=!!payload.alertsEnabled;next.outdoorEnabled=!!payload.outdoorEnabled;next.outdoorCameras=(payload.outdoorCameras||[]).filter(id=>/^[\w-]{1,100}$/.test(id));
+    next.autoUpdateEnabled=payload.autoUpdateEnabled!==false;next.autoUpdateInstallOnQuit=payload.autoUpdateInstallOnQuit!==false;
+    if(payload.location){const p=payload.location;if(!Number.isFinite(p.latitude)||!Number.isFinite(p.longitude)||Math.abs(p.latitude)>90||Math.abs(p.longitude)>180)throw Error('Ville invalide');Object.assign(next,{city:String(p.name).slice(0,100),latitude:p.latitude,longitude:p.longitude});}
+    if(payload.preset!=='keep'){
+      if(!['calm','codex','home','empty'].includes(payload.preset))throw Error('Disposition inconnue');
+      const display=all.find(d=>String(d.id)===String(payload.displayId))||screen.getPrimaryDisplay();const w=presetWindow(display,payload.preset);w.id+='-'+Date.now();next.windows.push(w);
+    }
+    next.setupComplete=true;next.tutorialCompleted=true;next.restoreOnLaunch=next.windows.length>0;
+    normalize(next);config=next;save();await setupModules();await startHome();await local(control,'index.html');config.windows.forEach(makeWindow);return true;
+  }
   if(name==='spotifyStatus')return spotify?.refresh()||{connected:false};
   if(name==='spotifyConnect'){const result=await spotify.begin();await shell.openExternal(result.url);return{redirectUri:result.redirectUri};}
   if(name==='spotifyDisconnect'){await spotify.disconnect();return true;}
@@ -402,7 +443,7 @@ async function action(event, name, payload) {
   if(name==='discover'){let phones=[];try{const services=await haClient?.request('/api/services');phones=Object.keys(services?.find(s=>s.domain==='notify')?.services||{}).filter(k=>k.startsWith('mobile_app_'));}catch{}return{catalog:haClient?.catalog()||[],mapping:haClient?.mapping||{},connected:!!haClient?.connected,phones};}
   if(name==='tutorialComplete'){config.tutorialCompleted=true;save();return true;}
   if(name==='refreshHome'){await haClient?.refresh();dataCache={};return true;}
-  if(name==='previewAlert'){closePreviews();const win=trackPreview(new BrowserWindow({...cameraDisplay().bounds,fullscreen:true,frame:false,alwaysOnTop:true,webPreferences:{...prefs,preload:path.join(__dirname,'./preload.js')}}));registerScene(win,100);local(win,'widget.html',{type:'alert',preview:payload==='wake'?'wake':'intrusion'});return true;}
+  if(name==='previewAlert'){closePreviews();const win=trackPreview(new BrowserWindow({...displayFor(screen.getAllDisplays(),config,payload==='wake'?'wake':'intrusion',cameraDisplay()).bounds,fullscreen:true,frame:false,alwaysOnTop:true,webPreferences:{...prefs,preload:path.join(__dirname,'./preload.js')}}));registerScene(win,100);local(win,'widget.html',{type:'alert',preview:payload==='wake'?'wake':'intrusion'});return true;}
   if (name === 'get') {
     remember();
     const { haToken, mistralKey,spotifyTokens,remoteServerToken,...publicConfig } = config;publicConfig.remotePeers=(config.remotePeers||[]).map(({token,...p})=>({...p,hasToken:!!token}));
@@ -441,6 +482,7 @@ async function action(event, name, payload) {
   throw Error('Action inconnue');
 }
 function firstSetup() {
+  if(!smoke||setupSmoke)return normalize(moduleDefaults(automationDefaults(freshConfig())));
   const result = defaults(), displays = screen.getAllDisplays();
   result.theme = 'glass-aurora';
   const primary = screen.getPrimaryDisplay(), top = [...displays].sort((a, b) => a.bounds.y - b.bounds.y)[0];
@@ -478,15 +520,16 @@ function makeTray() {
 const hasLock = app.requestSingleInstanceLock();
 if (!hasLock) app.quit();
 else app.whenReady().then(async () => {
-  try { config = smoke&&!performanceSmoke&&!regressionSmoke&&!homeSmoke?firstSetup():normalize(JSON.parse(fs.readFileSync(configPath, 'utf8'))); }
+  try { config = setupSmoke||smoke&&!performanceSmoke&&!regressionSmoke&&!homeSmoke?firstSetup():normalize(JSON.parse(fs.readFileSync(configPath, 'utf8'))); }
   catch { config = firstSetup(); save(); }
-  moduleDefaults(automationDefaults(config));config.entities=config.entities||{};delete config.haSolar;if(!config.v4Migrated){config.v4Migrated=true;const camera=config.windows.find(w=>w.id==='camera');if(camera)camera.gap=0;}
+  moduleDefaults(automationDefaults(config));config.entities=config.entities||{};if(config.setupComplete===undefined)config.setupComplete=!!config.windows.length;delete config.haSolar;if(!config.v4Migrated){config.v4Migrated=true;const camera=config.windows.find(w=>w.id==='camera');if(camera)camera.gap=0;}
   if(config.version<2){config.version=2;config.alertsEnabled=true;config.frigateUrl=config.frigateUrl||'';config.phoneService=config.phoneService||'';config.newsUrl='https://www.francetvinfo.fr/titres.rss';for(const w of config.windows)w.frame=false;save();}
   if(config.version<3){config.version=3;if(config.audioProvider==='off')config.audioProvider='local';}save();
   if(process.argv.includes('--home-screen')){config=homeScreenConfig(config,cameraDisplay().id);save();}
   session.defaultSession.setPermissionRequestHandler((_, __, callback) => callback(false));
   ipcMain.handle('lumen', action);
   audioBriefing=new AudioBriefing({getConfig:()=>config,getData:data,decrypt:async encoded=>(await safeStorage.decryptStringAsync(Buffer.from(encoded,'base64'))).result,dataDir});
+  updater=new PortableUpdater({version:app.getVersion(),exe:process.execPath,dataDir,getConfig:()=>config,dry:smoke||!app.isPackaged});updater.start();
   await setupModules();initOutdoor();if(smoke||!config.restoreOnLaunch||!config.windows.length||process.argv.includes('--settings'))manager(); makeTray();if(!smoke){quotaMonitor.start();startHome();houseTimer=setInterval(houseStep,1000);outdoorPollTimer=setInterval(pollOutdoor,2500);}
   shortcuts.hide = globalShortcut.register('CommandOrControl+Alt+Space', toggle);
   shortcuts.manager = globalShortcut.register('CommandOrControl+Alt+L', manager);
@@ -503,7 +546,7 @@ else app.whenReady().then(async () => {
     fs.rmSync(path.join(__dirname,'../../test-results/smoke-failure.json'), { force: true });
     fs.rmSync(path.join(__dirname,'../../test-results/smoke-result.json'), { force: true });
     const timeout = setTimeout(() => { fs.writeFileSync(path.join(__dirname,'../../test-results/smoke-failure.json'), JSON.stringify({ error: 'Délai de test dépassé' })); app.exit(1); }, 120000);
-    try { if(homeSmoke){await require('../../tests/smoke/v66-smoke.js').runV66({control,action,windows,cameraStep,outdoorWatch,getFocus:()=>outdoorFocus,cameraDisplay,surfaces,errors});}else if(regressionSmoke){await require('../../tests/smoke/v651-smoke.js').runV651({action,windows,houseStep,engine,manager,getControl:()=>control,getStandby:()=>({active:standbyActive,holdUntil:standbyHoldUntil,windows:[...standbyWindows.values()]}),toggle,errors});}else if(performanceSmoke){await require('../../tests/smoke/v64-smoke.js').runV64({control,action,windows,surfaces,createStandby,cameraDisplay,getFocus:()=>outdoorFocus,errors});}else{await runSmoke({ control, config, windows, makeWindow, closeWindow, toggle, shortcuts, errors, action, data, save, screen, startHome, houseStep, getMorning:()=>morningWindow }); await require('../../tests/smoke/v4-smoke.js').runV4({control,action,screen}); await require('../../tests/smoke/v5-smoke.js').runV5({control,action,screen,createStandby,cameraDisplay,markStandby:()=>{standbyActive=true;},openManager:manager,errors,getStandby:()=>({active:standbyActive,holdUntil:standbyHoldUntil})}); await require('../../tests/smoke/v6-smoke.js').runV6({control,action,cameraStep,outdoorWatch,getFocus:()=>outdoorFocus,cameraDisplay,windows,errors}); await require('../../tests/smoke/v61-smoke.js').runV61({control,action,getFocus:()=>outdoorFocus,errors}); await require('../../tests/smoke/v62-smoke.js').runV62({control,action,getFocus:()=>outdoorFocus,windows,errors}); await require('../../tests/smoke/v64-smoke.js').runV64({control,action,windows,surfaces,createStandby,cameraDisplay,getFocus:()=>outdoorFocus,errors}); }}
+    try { if(setupSmoke){await require('../../tests/smoke/setup-smoke.js').run({control,action,windows,errors});}else if(homeSmoke){await require('../../tests/smoke/v66-smoke.js').runV66({control,action,windows,cameraStep,outdoorWatch,getFocus:()=>outdoorFocus,cameraDisplay,surfaces,errors});}else if(regressionSmoke){await require('../../tests/smoke/v651-smoke.js').runV651({action,windows,houseStep,engine,manager,getControl:()=>control,getStandby:()=>({active:standbyActive,holdUntil:standbyHoldUntil,windows:[...standbyWindows.values()]}),toggle,errors});}else if(performanceSmoke){await require('../../tests/smoke/v64-smoke.js').runV64({control,action,windows,surfaces,createStandby,cameraDisplay,getFocus:()=>outdoorFocus,errors});}else{await runSmoke({ control, config, windows, makeWindow, closeWindow, toggle, shortcuts, errors, action, data, save, screen, startHome, houseStep, getMorning:()=>morningWindow }); await require('../../tests/smoke/v4-smoke.js').runV4({control,action,screen}); await require('../../tests/smoke/v5-smoke.js').runV5({control,action,screen,createStandby,cameraDisplay,markStandby:()=>{standbyActive=true;},openManager:manager,errors,getStandby:()=>({active:standbyActive,holdUntil:standbyHoldUntil})}); await require('../../tests/smoke/v6-smoke.js').runV6({control,action,cameraStep,outdoorWatch,getFocus:()=>outdoorFocus,cameraDisplay,windows,errors}); await require('../../tests/smoke/v61-smoke.js').runV61({control,action,getFocus:()=>outdoorFocus,errors}); await require('../../tests/smoke/v62-smoke.js').runV62({control,action,getFocus:()=>outdoorFocus,windows,errors}); await require('../../tests/smoke/v64-smoke.js').runV64({control,action,windows,surfaces,createStandby,cameraDisplay,getFocus:()=>outdoorFocus,errors}); }}
     catch (e) { fs.writeFileSync(path.join(__dirname,'../../test-results/smoke-failure.json'), JSON.stringify({ error: e.stack,errors }, null, 2)); app.exit(1); return; }
     clearTimeout(timeout);
     setTimeout(()=>app.exit(0),1500);app.quit();
@@ -514,10 +557,11 @@ else app.whenReady().then(async () => {
 });
 async function homeScreenDiagnostics(){const item=windows.get('camera');if(!item||config.windows.find(w=>w.id==='camera')?.tiles[0]?.type!=='lounge')return{enabled:false};return{enabled:true,permanentStreams:item.streams.filter(Boolean).length,...await item.views[0].webContents.executeJavaScript('({powerText:document.querySelector("[data-power-value]")?.textContent,powerSource:document.querySelector("[data-power-source]")?.textContent,powerStatus:document.querySelector("[data-power-freshness]")?.textContent,photos:document.querySelectorAll("img").length,clock:!!document.querySelector("[data-clock]"),mascot:!!document.querySelector(".ambient-mascot"),horizontalOverflow:document.documentElement.scrollWidth-innerWidth,verticalOverflow:document.documentElement.scrollHeight-innerHeight})')};}
 async function quotaDiagnostics(){const item=windows.get('quota');if(!item||item.win.isDestroyed())return null;const view=item.views[0]?.webContents;if(!view||view.isDestroyed())return null;return view.executeJavaScript("({visible:!document.hidden,remaining:[...document.querySelectorAll('.ring strong')].map(e=>e.textContent),refreshButton:!!document.querySelector('[data-refresh-quota]'),overflow:document.documentElement.scrollWidth-innerWidth,errors:document.querySelector('#feedback.visible')?.textContent||null})");}
-async function writeDiagnostics(){try{const live=await data();fs.writeFileSync(path.join(dataDir,'diagnostics.json'),JSON.stringify({performance:{homeEvents:homeChangeEvents,homeBatches:homeChangeRuns,hiddenStreamsUnloaded:true,backgroundThrottling:true,cameras:live.streams.filter(s=>s.camera).map(s=>({active:s.active,suspended:s.suspended,resumes:s.resumes,status:s.status})),surfaces:surfaces.entries.size},version:'7.1.0',modules:{features:config.features,economy:config.economyMode,remoteServer:!!remoteServer.server,remoteError},electricity:haClient?.powerSnapshot(),homeConnected:live.home.connected,unifi:{available:live.home.network?.available,entities:live.home.network?.entityCount,devices:live.home.network?.devices?.length,historyPoints:live.home.network?.history?.length,wanExposed:live.home.network?.wanDown!==null&&live.home.network?.wanDown!==undefined},observedAt:new Date().toISOString(),quota:live.quota,quotaConnection:{connected:!!quotaMonitor.child,directObservedAt:quotaMonitor.live?.timestamp,error:quotaMonitor.lastError||null},quotaUi:await quotaDiagnostics(),homeScreen:await homeScreenDiagnostics(),windowInventory:BrowserWindow.getAllWindows().map(w=>({title:w.getTitle(),visible:w.isVisible(),minimized:w.isMinimized(),bounds:w.getBounds(),preview:previewWindows.has(w)})),standby:{...standbyStatus(),presence:live.home.entities.roomPresence?.state,bedroomLight:live.home.entities.bedroomLight?.state,engine:engine.snapshot(),screens:standbyRoles(screen.getAllDisplays(),cameraDisplay(),config).map(t=>({id:t.display.id,role:t.role})),appearance:config.standbyAppearance,sun:live.home.sun,quiet:engine.quiet,bedroomLightConfigured:!!live.home.entities.bedroomLight},cameraSound:{live:config.cameraAudioLive,detection:config.cameraAudioDetection,chime:config.detectionSoundEnabled,tone:config.detectionTone,volume:config.detectionVolume,nightVolume:config.detectionNightVolume,nightMode:config.detectionNightMode},settingsUi:{open:settingsOpen(),routes:control&&!control.isDestroyed()?await control.webContents.executeJavaScript('document.querySelectorAll("[data-settings-route]").length'):0},outdoor:{presentation:config.outdoorPresentation,snapshots:config.outdoorShowSnapshots,enabled:config.outdoorEnabled,cameras:config.outdoorCameras,displayId:outdoorDisplay().id,sensors:live.home.cameraActivity?.length,active:outdoorWatch.snapshot().length,visible:!!outdoorFocus?.win?.isVisible()},roomPresence:!!live.home.entities.roomPresence,audio:live.audio,streams:live.streams.map(s=>({camera:s.camera,status:s.status,reloads:s.reloads,audioMuted:s.audioMuted,video:s.video})),nasEntities:live.home.nas?.length,circuits:live.home.circuits?.length,sleepConfigured:!!live.home.entities.sleepEvent,cpapConfigured:!!live.home.entities.cpapUsage,bedroom:!!live.home.entities.bedroom,proxmoxMetrics:live.home.proxmox?.length,brightness:brightness.snapshot().displays.map(d=>({name:d.name,supported:d.supported})),weather:!!live.weather?.current,newsCount:live.news?.items?.length,frigateCount:live.frigate?.events?.length,codexProjects:live.activity?.projects?.length,activityError:live.activity?.error,windows:windows.size,shortcuts,errors},null,2));}catch(e){fs.writeFileSync(path.join(dataDir,'diagnostics-error.json'),JSON.stringify({error:e.message}));}}
+async function writeDiagnostics(){try{const live=await data();fs.writeFileSync(path.join(dataDir,'diagnostics.json'),JSON.stringify({performance:{homeEvents:homeChangeEvents,homeBatches:homeChangeRuns,hiddenStreamsUnloaded:true,backgroundThrottling:true,cameras:live.streams.filter(s=>s.camera).map(s=>({active:s.active,suspended:s.suspended,resumes:s.resumes,status:s.status})),surfaces:surfaces.entries.size},version:app.getVersion(),modules:{features:config.features,economy:config.economyMode,remoteServer:!!remoteServer.server,remoteError},electricity:haClient?.powerSnapshot(),homeConnected:live.home.connected,unifi:{available:live.home.network?.available,entities:live.home.network?.entityCount,devices:live.home.network?.devices?.length,historyPoints:live.home.network?.history?.length,wanExposed:live.home.network?.wanDown!==null&&live.home.network?.wanDown!==undefined},observedAt:new Date().toISOString(),quota:live.quota,quotaConnection:{connected:!!quotaMonitor.child,directObservedAt:quotaMonitor.live?.timestamp,error:quotaMonitor.lastError||null},quotaUi:await quotaDiagnostics(),homeScreen:await homeScreenDiagnostics(),windowInventory:BrowserWindow.getAllWindows().map(w=>({title:w.getTitle(),visible:w.isVisible(),minimized:w.isMinimized(),bounds:w.getBounds(),preview:previewWindows.has(w)})),standby:{...standbyStatus(),presence:live.home.entities.roomPresence?.state,bedroomLight:live.home.entities.bedroomLight?.state,engine:engine.snapshot(),screens:standbyRoles(screen.getAllDisplays(),cameraDisplay(),config).map(t=>({id:t.display.id,role:t.role})),appearance:config.standbyAppearance,sun:live.home.sun,quiet:engine.quiet,bedroomLightConfigured:!!live.home.entities.bedroomLight},cameraSound:{live:config.cameraAudioLive,detection:config.cameraAudioDetection,chime:config.detectionSoundEnabled,tone:config.detectionTone,volume:config.detectionVolume,nightVolume:config.detectionNightVolume,nightMode:config.detectionNightMode},settingsUi:{open:settingsOpen(),routes:control&&!control.isDestroyed()?await control.webContents.executeJavaScript('document.querySelectorAll("[data-settings-route]").length'):0},outdoor:{presentation:config.outdoorPresentation,snapshots:config.outdoorShowSnapshots,enabled:config.outdoorEnabled,cameras:config.outdoorCameras,displayId:outdoorDisplay().id,sensors:live.home.cameraActivity?.length,active:outdoorWatch.snapshot().length,visible:!!outdoorFocus?.win?.isVisible()},roomPresence:!!live.home.entities.roomPresence,audio:live.audio,streams:live.streams.map(s=>({camera:s.camera,status:s.status,reloads:s.reloads,audioMuted:s.audioMuted,video:s.video})),nasEntities:live.home.nas?.length,circuits:live.home.circuits?.length,sleepConfigured:!!live.home.entities.sleepEvent,cpapConfigured:!!live.home.entities.cpapUsage,bedroom:!!live.home.entities.bedroom,proxmoxMetrics:live.home.proxmox?.length,brightness:brightness.snapshot().displays.map(d=>({name:d.name,supported:d.supported})),weather:!!live.weather?.current,newsCount:live.news?.items?.length,frigateCount:live.frigate?.events?.length,codexProjects:live.activity?.projects?.length,activityError:live.activity?.error,windows:windows.size,shortcuts,errors},null,2));}catch(e){fs.writeFileSync(path.join(dataDir,'diagnostics-error.json'),JSON.stringify({error:e.message}));}}
 app.on('second-instance', (_,args) => {if(args.includes('--diagnostics'))writeDiagnostics();else manager();});
 app.on('window-all-closed', () => {});
 app.on('before-quit', () => {
+  updater?.stop();if(updater?.canInstall()&&(updater.installRequested||config.autoUpdateInstallOnQuit!==false))updater.install();
   app.quitting = true;spotify?.cancel();remoteServer.stop();clearTimeout(homeChangeTimer);quotaMonitor.stop();closePreviews();control?.destroy();surfaces.stop();clearInterval(outdoorPollTimer);outdoorFocus?.close();endStandby(false);brightness.stop();clearInterval(houseTimer);if(morningWindow&&!morningWindow.isDestroyed())morningWindow.close();haClient?.stop();clearTimeout(alertTimer);if(alertWindow&&!alertWindow.isDestroyed())alertWindow.close();
   if (config) { remember(); save(); }
   for (const id of [...windows.keys()]) closeWindow(id);

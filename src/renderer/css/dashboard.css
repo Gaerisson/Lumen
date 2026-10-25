@@ -3,3 +3,5 @@
 @media(max-width:350px){#content{padding:16px}.module,.weather-hero,.alarm-panel{padding:17px}.hourly{grid-template-columns:repeat(3,1fr)}.mini-metrics{gap:7px}.mini-metrics b{font-size:16px}.little-clock{font-size:22px}.dashboard-greeting h1{font-size:34px}.alert-scene{padding:20px}}
 
 @media(min-width:800px){.dashboard-grid{grid-auto-rows:10px;row-gap:18px}.dashboard-grid>div{min-width:0}.dashboard-grid>div>.module,.dashboard-grid>div>.weather-hero,.dashboard-grid>div>.alarm-panel{margin-bottom:0}}
+
+.quota-full-label{font-size:15px;margin:12px 0 6px;color:var(--accent);font-weight:450}
