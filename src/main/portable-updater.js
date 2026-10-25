@@ -37,7 +37,7 @@ try {
   $size = 0L
   foreach ($entry in $zip.Entries) {
    $raw = $entry.FullName.Replace('\\','/')
-   if ($raw -match '(^/|:|(^|/)\.\.(/|$))' -or (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Chemin archive refuse' }
+   if ($raw -match '(^/|:|(^|/)\\.\\.(/|$))' -or (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Chemin archive refuse' }
    if (-not $raw.StartsWith($prefix,[StringComparison]::Ordinal)) { throw 'Structure archive invalide' }
    $relative = $raw.Substring($prefix.Length)
    if ($relative -match '^(data|test-results|\.git|updates)(/|$)') { throw 'Donnees privees dans archive' }
