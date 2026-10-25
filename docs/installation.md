@@ -1,4 +1,4 @@
-# Lumen 8.0 · © Gaerisson
+# Lumen 8.1 · © Gaerisson
 
 Vibecodé avec OpenAI Codex.
 

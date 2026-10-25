@@ -10,6 +10,16 @@ Sur une installation neuve, Lumen ouvre uniquement son guide de bienvenue. Les s
 
 La navigation principale propose **Mon studio**, **Connexions**, **Apparence**. Les réglages détaillés restent dans **Réglages avancés**, avec une recherche. `Ctrl+Alt+L` ouvre les réglages ; `Ctrl+Alt+Espace` masque les panneaux.
 
+## Composer plus facilement
+
+Les boutons ↶ / ↷ et `Ctrl+Z` / `Ctrl+Y` annulent ou rétablissent les changements avant sauvegarde. Les flèches déplacent la carte sélectionnée ; `Maj` augmente le pas. `Suppr` retire une carte. **Répartir** organise les cartes sans chevauchement. Le sélecteur Écran déplace un panneau sur un autre moniteur.
+
+**Mes capteurs** permet de choisir jusqu’à huit entités Home Assistant dans la liste du studio. Un module peut montrer une température, un niveau de batterie, une mesure électrique ou un autre état. Les courbes restent locales et ne sont collectées que pour les capteurs sélectionnés. Une entité supprimée ou indisponible est signalée, sans valeur inventée.
+
+**État des services** aide à distinguer une connexion manquante d’un module désactivé. Il réutilise les relevés existants et ne lance aucun test réseau supplémentaire.
+
+La sauvegarde du studio conserve les fenêtres inchangées et la connexion Home Assistant. Elle active les connecteurs des modules nouvellement ajoutés ; déplacer une carte existante respecte tes choix de désactivation.
+
 ## Mises à jour automatiques
 
 La version Windows portable vérifie les versions stables de `Gaerisson/Lumen` sur GitHub. Elle télécharge l’archive Windows et contrôle son SHA-256 publié par GitHub avant de la préparer. Les réglages dans **Connexions** permettent de désactiver le téléchargement ou l’installation à la fermeture, de vérifier manuellement et d’installer une version prête immédiatement.

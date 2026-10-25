@@ -23,6 +23,8 @@ function render(){
   else if(type==='quota')view=quotaPanel(state);
   else if(type==='weather')view=weatherView(state.weather,state.city);
   else if(type==='network')view=networkView(state.home?.network);
+  else if(type==='sensors')view=state.options?.features?.sensors===false?moduleOffView():sensorsView(state.sensors,JSON.parse(params.get('sensorIds')||'[]'),params.get('title')||'Mes capteurs');
+  else if(type==='health')view=state.options?.features?.health===false?moduleOffView():healthView(state);
   else if(type==='computer')view=computerView();
   else if(type==='music')view=musicView();
   else if(type==='energy')view=energyView(state.home);
@@ -34,7 +36,7 @@ function render(){
   else if(type==='bedroom')view=bedroomView(state.home);
   else if(type==='nas')view=nasView(state.home,false,state.options?.nasThreshold||85);
   else if(type==='news')view=newsView(state.news);
-  else view=`${tabs()}<div class="connection-line"><span class="status-dot ${state.home?.connected?'live':''}"></span>${state.home?.connected?'Maison connectée':esc(state.home?.error||'Connexion…')}<span>LUMEN / 6.7</span></div><main class="dashboard-page" data-live-key="dashboard-page" data-page="${currentTab}">${currentTab==='summary'&&state.options?.audioProvider!=='off'?audioCard():''}${contentFor(currentTab)}</main><footer class="dashboard-footer">${state.observedAt?'Actualisé à '+time(state.observedAt):'Connexion aux sources…'} · Données locales & services configurés</footer>`;
+  else view=`${tabs()}<div class="connection-line"><span class="status-dot ${state.home?.connected?'live':''}"></span>${state.home?.connected?'Maison connectée':esc(state.home?.error||'Connexion…')}<span>LUMEN / 8.1</span></div><main class="dashboard-page" data-live-key="dashboard-page" data-page="${currentTab}">${currentTab==='summary'&&state.options?.audioProvider!=='off'?audioCard():''}${contentFor(currentTab)}</main><footer class="dashboard-footer">${state.observedAt?'Actualisé à '+time(state.observedAt):'Connexion aux sources…'} · Données locales & services configurés</footer>`;
   patchView(root,view);
   root.scrollTop=y;const nextCommand=root.querySelector('.quota-command-code');if(commandPosition&&nextCommand?.dataset.commandKey===commandPosition.key)nextCommand.scrollTop=commandPosition.top;tick();bind();syncAlertAudio();layoutModules();
 }

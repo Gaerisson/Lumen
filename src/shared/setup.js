@@ -1,4 +1,5 @@
 const moduleChoices=[
+ ['sensors','Mes capteurs','◈','Entités HA et courbes au choix'],['health','État des services','♡','Connexions et disponibilité'],
  ['clock','Horloge','◷','L’heure, simplement'],['weather','Météo','☀','Prévisions locales'],
  ['quota','Compagnon Codex','◔','Quota et projets'],['computer','Ordinateurs','▥','CPU et mémoire'],
  ['home','Maison','⌂','Sécurité et confort'],['energy','Électricité','ϟ','Puissance et consommation'],
@@ -8,7 +9,7 @@ const moduleChoices=[
  ['nas','Stockage','▤','NAS et capacité'],['proxmox','Serveurs','▦','Proxmox'],
  ['lounge','Accueil maison','◒','Horloge, mascotte et informations'],['web','Page web','↗','Ton propre dashboard']
 ].map(([id,name,icon,description])=>({id,name,icon,description}));
-function freshConfig(){return{version:3,setupComplete:false,tutorialCompleted:false,theme:'glass-aurora',appearanceMode:'auto',economyMode:true,animationsEnabled:true,animatedBackground:false,city:'',latitude:null,longitude:null,haUrl:'',frigateUrl:'',go2rtcUrl:'',entities:{},windows:[],restoreOnLaunch:false,startup:false,alertsEnabled:false,alarmSound:false,wakeSound:false,alarmVoice:false,wakeVoice:false,morningAutoTts:false,standbyEnabled:false,presenceEnabled:false,brightnessEnabled:false,audioProvider:'off',outdoorEnabled:false,outdoorCameras:[],newsUrl:'https://www.francetvinfo.fr/titres.rss',autoUpdateEnabled:true,autoUpdateInstallOnQuit:true,features:{codex:true,computer:true,weather:true,home:false,network:false,cameras:false,morning:false,sleep:false,nas:false,proxmox:false,music:false,news:false}};}
+function freshConfig(){return{version:3,setupComplete:false,tutorialCompleted:false,theme:'glass-aurora',appearanceMode:'auto',economyMode:true,animationsEnabled:true,animatedBackground:false,city:'',latitude:null,longitude:null,haUrl:'',frigateUrl:'',go2rtcUrl:'',entities:{},windows:[],restoreOnLaunch:false,startup:false,alertsEnabled:false,alarmSound:false,wakeSound:false,alarmVoice:false,wakeVoice:false,morningAutoTts:false,standbyEnabled:false,presenceEnabled:false,brightnessEnabled:false,audioProvider:'off',outdoorEnabled:false,outdoorCameras:[],newsUrl:'https://www.francetvinfo.fr/titres.rss',autoUpdateEnabled:true,autoUpdateInstallOnQuit:true,features:{sensors:false,health:true,codex:true,computer:true,weather:true,home:false,network:false,cameras:false,morning:false,sleep:false,nas:false,proxmox:false,music:false,news:false}};}
 function displayFor(displays,config,kind,fallback){
  const key=kind==='wake'?'wakeDisplayId':kind==='morning'?'morningDisplayId':kind==='intrusion'?'intrusionDisplayId':'outdoorDisplayId';
  const id=config[key]??(kind==='morning'?config.wakeDisplayId:null)??config.alertDisplayId;

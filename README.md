@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.0.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.1.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -39,6 +39,19 @@ Au premier lancement, **une seule fenêtre de bienvenue** : connecte les service
 | Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
+
+## Nouveautés 8.1
+
+- **Mes capteurs** : choisis tes entités Home Assistant, leurs valeurs et leurs courbes locales.
+- **État des services** : vois les connexions disponibles, à configurer ou désactivées.
+- **Studio** : annuler/rétablir, répartir les cartes, déplacer un panneau entre écrans. Les sauvegardes conservent les fenêtres inchangées et la connexion HA.
+- **Mises à jour** : téléchargements regroupés et récupération après échec ou archive manquante.
+
+![Capteurs Home Assistant personnalisés](docs/screens/sensors.jpg)
+
+![État des services](docs/screens/health.jpg)
+
+[Historique des versions](docs/changelog.md)
 
 ## Modules & connecteurs
 

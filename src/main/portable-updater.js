@@ -40,7 +40,7 @@ try {
    if ($raw -match '(^/|:|(^|/)\\.\\.(/|$))' -or (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000) { throw 'Chemin archive refuse' }
    if (-not $raw.StartsWith($prefix,[StringComparison]::Ordinal)) { throw 'Structure archive invalide' }
    $relative = $raw.Substring($prefix.Length)
-   if ($relative -match '^(data|test-results|\.git|updates)(/|$)') { throw 'Donnees privees dans archive' }
+   if ($relative -match '^(data|test-results|\\.git|updates)(/|$)') { throw 'Donnees privees dans archive' }
    $resolved = [IO.Path]::GetFullPath((Join-Path $stage $relative))
    if (-not ($resolved.StartsWith($stage + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or $resolved -eq $stage)) { throw 'Chemin hors destination' }
    $size += $entry.Length
@@ -75,28 +75,77 @@ try {
   $saved = Join-Path $backup $relative
   if (Test-Path -LiteralPath $saved) { Copy-Item -LiteralPath $saved -Destination $destination -Force -ErrorAction SilentlyContinue } else { Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue }
  }
- @{ok=$false;message='Installation impossible. La version precedente est conservee.'} | ConvertTo-Json | Set-Content -LiteralPath $status -Encoding UTF8
+ @{ok=$false;version=${ps(version)};message='Installation impossible. La sauvegarde est conservee.'} | ConvertTo-Json | Set-Content -LiteralPath $status -Encoding UTF8
 }
 foreach ($folder in @($stage,$backup)) {
  $resolvedFolder = [IO.Path]::GetFullPath($folder)
  $updateRoot = [IO.Path]::GetDirectoryName($archive) + [IO.Path]::DirectorySeparatorChar
- if ($finished -and $resolvedFolder.StartsWith($updateRoot,[StringComparison]::OrdinalIgnoreCase) -and $resolvedFolder -ne $target -and [IO.Path]::GetFileName($resolvedFolder) -match '^(stage|backup)-[a-f0-9]{32}$') { Remove-Item -LiteralPath $resolvedFolder -Recurse -Force -ErrorAction SilentlyContinue }
+ if (($finished -or [IO.Path]::GetFileName($resolvedFolder).StartsWith('stage-')) -and $resolvedFolder.StartsWith($updateRoot,[StringComparison]::OrdinalIgnoreCase) -and $resolvedFolder -ne $target -and [IO.Path]::GetFileName($resolvedFolder) -match '^(stage|backup)-[a-f0-9]{32}$') { Remove-Item -LiteralPath $resolvedFolder -Recurse -Force -ErrorAction SilentlyContinue }
 }
 if (${restart?'$true':'$false'} -and (Test-Path -LiteralPath (Join-Path $target 'Lumen.exe'))) { Start-Process -FilePath (Join-Path $target 'Lumen.exe') -WorkingDirectory $target -WindowStyle Hidden }
 if (-not $finished) { exit 1 }
 `;
 }
-class PortableUpdater{
- constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false}){Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry});this.folder=path.join(dataDir,'updates');this.state={status:'idle',current:version};this.available=null;this.ready=null;this.busy=null;this.timer=null;this.installRequested=false;
-  try{const ready=JSON.parse(fs.readFileSync(path.join(this.folder,'ready.json'),'utf8'));if(newer(ready.version,version)&&/^[a-f0-9]{64}$/.test(ready.sha256)&&ready.name===`Lumen-${ready.version}-Windows-x64.zip`){this.ready=ready;this.state={...this.state,status:'ready',version:ready.version};}}catch{}
+class PortableUpdater {
+ constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false,spawnProcess=spawn}){
+  Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry,spawnProcess});
+  this.folder=path.join(dataDir,'updates');this.state={status:'idle',current:version};this.available=null;this.ready=null;
+  this.checkTask=null;this.downloadTask=null;this.installRequested=false;this.stopped=false;
+  try{
+   const r=JSON.parse(fs.readFileSync(path.join(this.folder,'ready.json'),'utf8'));
+   if(newer(r.version,version)&&/^[a-f0-9]{64}$/.test(r.sha256)&&r.name==='Lumen-'+r.version+'-Windows-x64.zip'){
+    const file=fs.statSync(path.join(this.folder,r.name));if(!file.isFile()||file.size!==r.size)throw Error('Archive absente ou incomplète.');
+    let result;try{result=JSON.parse(fs.readFileSync(path.join(this.folder,'install-result.json'),'utf8').replace(/^\uFEFF/,''));}catch{}
+    if(result?.ok===false&&(!result.version||result.version===r.version)){this.blockedVersion=r.version;this.state={...this.state,status:'error',error:'La dernière installation a échoué. Tu peux retélécharger la version.',version:r.version};}
+    else {this.ready=r;this.state={...this.state,status:'ready',version:r.version};}
+   }
+  }catch(e){if(e.code!=='ENOENT')this.state={...this.state,status:'error',error:'La mise à jour en attente doit être retéléchargée.'};}
  }
- snapshot(){return{...this.state,supported:!this.dry&&process.platform==='win32'&&path.basename(this.exe).toLowerCase()==='lumen.exe',enabled:this.getConfig().autoUpdateEnabled!==false,installOnQuit:this.getConfig().autoUpdateInstallOnQuit!==false};}
+ archiveValid(){try{const file=fs.statSync(path.join(this.folder,this.ready.name));return file.isFile()&&file.size===this.ready.size;}catch{return false;}}
+ snapshot(){if(this.ready&&!this.archiveValid()){this.ready=null;this.state={...this.state,status:'error',error:'L’archive de mise à jour doit être retéléchargée.'};}return{...this.state,supported:!this.dry&&process.platform==='win32'&&path.basename(this.exe).toLowerCase()==='lumen.exe',enabled:this.getConfig().autoUpdateEnabled!==false,installOnQuit:this.getConfig().autoUpdateInstallOnQuit!==false};}
  set(state){this.state={...this.state,...state};this.onChange(this.snapshot());return this.snapshot();}
- async check(){if(this.busy)return this.busy;if(this.ready)return this.snapshot();this.busy=(async()=>{this.set({status:'checking',error:null});try{const response=await this.fetcher(API,{headers:{Accept:'application/vnd.github+json','User-Agent':'Lumen/'+this.version},signal:AbortSignal.timeout(20000),redirect:'error'});if(!response.ok)throw Error('GitHub indisponible (HTTP '+response.status+').');this.available=releaseInfo(await response.json(),this.version);this.set({status:this.available?'available':'current',version:this.available?.version,checkedAt:new Date().toISOString()});}catch(e){this.set({status:'error',error:e.message});}return this.snapshot();})();try{return await this.busy;}finally{this.busy=null;}}
- async download(){if(this.busy)return this.busy;if(this.ready)return this.snapshot();if(!this.available)await this.check();if(!this.available)return this.snapshot();const asset=this.available;this.busy=(async()=>{fs.mkdirSync(this.folder,{recursive:true});for(const entry of fs.readdirSync(this.folder,{withFileTypes:true}))if(entry.isFile()&&/^Lumen-\d+\.\d+\.\d+-Windows-x64\.zip$/.test(entry.name)&&entry.name!==asset.name)fs.unlinkSync(path.join(this.folder,entry.name));const file=path.join(this.folder,asset.name),partial=file+'.part';this.set({status:'downloading',progress:0,error:null});try{const response=await this.fetcher(asset.url,{signal:AbortSignal.timeout(300000)});const final=new URL(response.url||asset.url);if(final.protocol!=='https:'||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'].includes(final.hostname)||!response.ok||!response.body)throw Error('Téléchargement GitHub impossible.');const fd=fs.openSync(partial,'w'),hash=crypto.createHash('sha256');let size=0,last=0;try{for await(const chunk of response.body){size+=chunk.length;if(size>asset.size)throw Error('Archive trop grande');hash.update(chunk);let offset=0;while(offset<chunk.length)offset+=fs.writeSync(fd,chunk,offset,chunk.length-offset);if(Date.now()-last>500){last=Date.now();this.set({progress:Math.round(size/asset.size*100)});}}}finally{fs.closeSync(fd);}if(size!==asset.size||hash.digest('hex')!==asset.sha256)throw Error('Vérification SHA-256 échouée.');fs.renameSync(partial,file);this.ready=asset;fs.writeFileSync(path.join(this.folder,'ready.json'),JSON.stringify(asset));this.set({status:'ready',version:asset.version,progress:100});}catch(e){fs.rmSync(partial,{force:true});this.set({status:'error',error:e.message});}return this.snapshot();})();try{return await this.busy;}finally{this.busy=null;}}
- canInstall(){return !!this.ready&&this.snapshot().supported;}
- install(){if(!this.canInstall())return false;const r=this.ready,script=path.join(this.folder,'install.ps1');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid}),{encoding:'utf8'});const child=spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});child.on('error',()=>{});child.unref();return true;}
- start(){if(this.dry)return;const run=async()=>{if(this.getConfig().autoUpdateEnabled===false)return;try{await this.check();if(this.state.status==='available')await this.download();}catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});}};this.timer=setTimeout(()=>{run();this.interval=setInterval(run,6*3600000);this.interval.unref();},30000);this.timer.unref();}
- stop(){clearTimeout(this.timer);clearInterval(this.interval);}
+ check(){
+  if(this.checkTask)return this.checkTask;if(this.state.status==='downloading')return Promise.resolve(this.snapshot());this.snapshot();if(this.ready)return Promise.resolve(this.snapshot());
+  this.checkTask=Promise.resolve().then(async()=>{
+   this.set({status:'checking',error:null,progress:0});
+   try{const response=await this.fetcher(API,{headers:{Accept:'application/vnd.github+json','User-Agent':'Lumen/'+this.version},signal:AbortSignal.timeout(20000),redirect:'error'});
+    if(!response.ok)throw Error('GitHub indisponible (HTTP '+response.status+').');this.available=releaseInfo(await response.json(),this.version);
+    this.set({status:this.available?'available':'current',version:this.available?.version,checkedAt:new Date().toISOString()});
+   }catch(e){this.available=null;this.set({status:'error',error:e.message});}return this.snapshot();
+  }).finally(()=>this.checkTask=null);return this.checkTask;
+ }
+ download(){
+  if(this.downloadTask)return this.downloadTask;
+  this.downloadTask=Promise.resolve().then(async()=>{
+   if(this.ready)return this.snapshot();if(!this.available)await this.check();if(!this.available)return this.snapshot();
+   const asset=this.available,file=path.join(this.folder,asset.name),partial=file+'.part';
+   this.set({status:'downloading',progress:0,error:null});
+   try{
+    fs.mkdirSync(this.folder,{recursive:true});
+    for(const entry of fs.readdirSync(this.folder,{withFileTypes:true}))if(entry.isFile()&&/^Lumen-\d+\.\d+\.\d+-Windows-x64\.zip$/.test(entry.name)&&entry.name!==asset.name)fs.unlinkSync(path.join(this.folder,entry.name));
+    const response=await this.fetcher(asset.url,{signal:AbortSignal.timeout(300000)}),final=new URL(response.url||asset.url);
+    if(final.protocol!=='https:'||!['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'].includes(final.hostname)||!response.ok||!response.body)throw Error('Téléchargement GitHub impossible.');
+    const fd=fs.openSync(partial,'w'),hash=crypto.createHash('sha256');let size=0,last=0;
+    try{for await(const chunk of response.body){size+=chunk.length;if(size>asset.size)throw Error('Archive trop grande');hash.update(chunk);let offset=0;while(offset<chunk.length)offset+=fs.writeSync(fd,chunk,offset,chunk.length-offset);if(Date.now()-last>500){last=Date.now();this.set({progress:Math.round(size/asset.size*100)});}}}finally{fs.closeSync(fd);}
+    if(size!==asset.size||hash.digest('hex')!==asset.sha256)throw Error('Vérification SHA-256 échouée.');
+    fs.renameSync(partial,file);const manifest=path.join(this.folder,'ready.json');fs.writeFileSync(manifest+'.tmp',JSON.stringify(asset));fs.renameSync(manifest+'.tmp',manifest);
+    fs.rmSync(path.join(this.folder,'install-result.json'),{force:true});this.ready=asset;this.blockedVersion=null;this.set({status:'ready',version:asset.version,progress:100});
+   }catch(e){try{fs.rmSync(partial,{force:true});}catch{}this.set({status:'error',error:e.message});}return this.snapshot();
+  }).finally(()=>this.downloadTask=null);return this.downloadTask;
+ }
+ canInstall(){const s=this.snapshot();return !!this.ready&&s.supported;}
+ install(){
+  if(!this.canInstall())return false;
+  try{const r=this.ready,script=path.join(this.folder,'install.ps1');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid}),{encoding:'utf8'});
+   const powershell=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
+   const child=this.spawnProcess(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});child.on('error',()=>this.set({status:'error',error:'Impossible de lancer l’installation Windows.'}));child.unref();return true;
+  }catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});return false;}
+ }
+ start(){
+  if(this.dry)return;this.stopped=false;
+  const run=async()=>{if(this.stopped||this.getConfig().autoUpdateEnabled===false)return;try{await this.check();if(!this.stopped&&this.getConfig().autoUpdateEnabled!==false&&this.state.status==='available'&&this.available?.version!==this.blockedVersion)await this.download();}catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});}};
+  this.timer=setTimeout(()=>{run();if(!this.stopped){this.interval=setInterval(run,6*3600000);this.interval.unref();}},30000);this.timer.unref();
+ }
+ stop(){this.stopped=true;clearTimeout(this.timer);clearInterval(this.interval);}
 }
 module.exports={PortableUpdater,newer,releaseInfo,installScript};
