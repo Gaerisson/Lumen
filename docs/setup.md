@@ -32,6 +32,14 @@ La sauvegarde du studio conserve les fenêtres inchangées et la connexion Home 
 
 La version Windows portable vérifie les versions stables de `Gaerisson/Lumen` sur GitHub. Elle télécharge l’archive Windows et contrôle son SHA-256 publié par GitHub avant de la préparer. Les réglages dans **Connexions** permettent de désactiver le téléchargement ou l’installation à la fermeture, de vérifier manuellement et d’installer une version prête immédiatement.
 
+La recherche commence quelques secondes après le lancement, puis revient toutes les **10 minutes**. Une erreur réseau est réessayée après 1, 2, 5 puis 10 minutes, en respectant les délais imposés par GitHub. Au retour d’une veille ou d’une connexion, une recherche est anticipée si le dernier essai date de plus de deux minutes. Réactiver l’option démarre une recherche immédiatement.
+
+Une **notification silencieuse** et une **pastille persistante** signalent une version prête. La pastille apparaît dans les barres des fenêtres et les vues Maison / Quota ; elle ouvre directement les réglages. La dernière vérification et la prochaine recherche sont visibles dans Connexions. Les notifications peuvent être désactivées séparément.
+
+Le moteur d’installation est vérifié : PowerShell 7 est utilisé s’il est disponible, sinon Windows PowerShell. Le runtime PowerShell 7 fourni avec Codex peut aussi être utilisé s’il est présent. Si aucun moteur ne fonctionne, l’erreur reste affichée et l’installation est bloquée ; l’archive peut être extraite manuellement. Lumen ne télécharge pas de moteur et ne modifie pas Windows pour contourner ce problème.
+
 L’installation attend la fermeture de Lumen, vérifie de nouveau l’archive et sa structure, conserve `data/`, remplace les fichiers de l’application puis relance Lumen. Une sauvegarde des fichiers remplacés permet un retour en cas d’échec de copie. Les archives contenant des chemins hors destination ou des données de profil sont refusées. L’app doit être extraite dans un dossier accessible en écriture. Le binaire reste non signé ; la vérification SHA-256 ne remplace pas une signature de code.
+
+Fermer une carte ou une fenêtre ne quitte pas nécessairement Lumen. Pour déclencher l’installation à la fermeture, utilise **Quitter Lumen** dans son icône près de l’horloge Windows, ou **Installer & relancer Lumen** dans les réglages.
 
 Les mises à jour ne relancent aucun chat Codex et ne modifient aucun paiement, crédit ou reset.

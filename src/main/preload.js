@@ -1,2 +1,2 @@
 const {contextBridge,ipcRenderer}=require('electron');
-contextBridge.exposeInMainWorld('lumen',{invoke:(action,data)=>ipcRenderer.invoke('lumen',action,data),onAppearance:callback=>{ipcRenderer.on('appearance',(_,value)=>callback(value));},onSurfaceActive:callback=>{ipcRenderer.on('surface-active',(_,value)=>callback(value));}});
+contextBridge.exposeInMainWorld('lumen',{invoke:(action,data)=>ipcRenderer.invoke('lumen',action,data),onUpdate:callback=>{ipcRenderer.on('update-status',(_,value)=>callback(value));},onUpdateIntent:callback=>{ipcRenderer.on('updates-open',()=>callback());},onAppearance:callback=>{ipcRenderer.on('appearance',(_,value)=>callback(value));},onSurfaceActive:callback=>{ipcRenderer.on('surface-active',(_,value)=>callback(value));}});

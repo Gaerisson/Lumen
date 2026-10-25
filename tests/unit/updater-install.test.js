@@ -1,8 +1,10 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const {installScript}=require('../../src/main/portable-updater.js');
-test('mise à jour Windows : installe, préserve data et refuse une archive traversante',{skip:process.platform!=='win32'},()=>{
+const {resolvePowerShell}=require('../../src/main/update-runtime.js');
+test('mise à jour Windows : installe, préserve data et refuse une archive traversante',{skip:process.platform!=='win32'},async()=>{
+ const runtime=await resolvePowerShell();
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"lumen's-update-")),appDir=path.join(dir,'app'),archive=path.join(dir,'update.zip'),ps=s=>"'"+s.replaceAll("'","''")+"'";
- const run=source=>{const file=path.join(dir,'test.ps1');fs.writeFileSync(file,source.replace('} catch {','} catch { Write-Error $_ -ErrorAction Continue;'));return spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',file],{windowsHide:true,encoding:'utf8',timeout:30000});};
+ const run=source=>{const file=path.join(dir,'test.ps1');fs.writeFileSync(file,source.replace('} catch {','} catch { Write-Error $_ -ErrorAction Continue;'));return spawnSync(runtime,['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',file],{windowsHide:true,encoding:'utf8',timeout:30000});};
  function zip(bad=false){const script=`$ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 Add-Type -AssemblyName System.IO.Compression

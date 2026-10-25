@@ -1,6 +1,8 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {spawn}=require('node:child_process');
+const {resolvePowerShell}=require('./update-runtime.js');
 const REPOSITORY='Gaerisson/Lumen',API='https://api.github.com/repos/'+REPOSITORY+'/releases/latest';
+const AUTO_INTERVAL=10*60*1000,RETRY_INTERVALS=[60000,120000,300000,600000];
 function newer(a,b){const parse=v=>{const m=/^v?(\d+)\.(\d+)\.(\d+)$/.exec(v||'');return m?m.slice(1).map(Number):null;},x=parse(a),y=parse(b);return !!x&&!!y&&x.some((v,i)=>v>y[i]&&x.slice(0,i).every((n,j)=>n===y[j]));}
 function releaseInfo(release,current){
  if(release?.draft||release?.prerelease||!newer(release?.tag_name,current))return null;
@@ -87,10 +89,11 @@ if (-not $finished) { exit 1 }
 `;
 }
 class PortableUpdater {
- constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false,spawnProcess=spawn}){
-  Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry,spawnProcess});
+ constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false,spawnProcess=spawn,now=Date.now,timers={setTimeout,clearTimeout},resolveRuntime=resolvePowerShell}){
+  Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry,spawnProcess,now,timers,resolveRuntime});
   this.folder=path.join(dataDir,'updates');this.state={status:'idle',current:version};this.available=null;this.ready=null;
-  this.checkTask=null;this.downloadTask=null;this.installRequested=false;this.stopped=false;
+  this.checkTask=null;this.downloadTask=null;this.autoTask=null;this.installRequested=false;this.stopped=true;this.failures=0;this.lastAttempt=0;this.retryAt=0;this.nextCheckAt=null;
+  try{const journal=JSON.parse(fs.readFileSync(path.join(this.folder,'status.json'),'utf8'));this.notifiedVersion=journal.notifiedVersion;this.state.checkedAt=journal.checkedAt;this.state.lastAttemptAt=journal.lastAttemptAt;}catch{}
   try{
    const r=JSON.parse(fs.readFileSync(path.join(this.folder,'ready.json'),'utf8'));
    if(newer(r.version,version)&&/^[a-f0-9]{64}$/.test(r.sha256)&&r.name==='Lumen-'+r.version+'-Windows-x64.zip'){
@@ -102,17 +105,20 @@ class PortableUpdater {
   }catch(e){if(e.code!=='ENOENT')this.state={...this.state,status:'error',error:'La mise à jour en attente doit être retéléchargée.'};}
  }
  archiveValid(){try{const file=fs.statSync(path.join(this.folder,this.ready.name));return file.isFile()&&file.size===this.ready.size;}catch{return false;}}
- snapshot(){if(this.ready&&!this.archiveValid()){this.ready=null;this.state={...this.state,status:'error',error:'L’archive de mise à jour doit être retéléchargée.'};}return{...this.state,supported:!this.dry&&process.platform==='win32'&&path.basename(this.exe).toLowerCase()==='lumen.exe',enabled:this.getConfig().autoUpdateEnabled!==false,installOnQuit:this.getConfig().autoUpdateInstallOnQuit!==false};}
+ snapshot(){if(this.ready&&!this.archiveValid()){this.ready=null;this.state={...this.state,status:'error',error:'L’archive de mise à jour doit être retéléchargée.'};}return{...this.state,runtimeReady:!!this.runtime,runtimeChecking:!!this.runtimeTask,installError:this.installError,nextCheckAt:this.nextCheckAt?new Date(this.nextCheckAt).toISOString():null,supported:!this.dry&&process.platform==='win32'&&path.basename(this.exe).toLowerCase()==='lumen.exe',enabled:this.getConfig().autoUpdateEnabled!==false,notify:this.getConfig().autoUpdateNotify!==false,installOnQuit:this.getConfig().autoUpdateInstallOnQuit!==false};}
+ persistStatus(){try{fs.mkdirSync(this.folder,{recursive:true});const file=path.join(this.folder,'status.json');fs.writeFileSync(file+'.tmp',JSON.stringify({checkedAt:this.state.checkedAt,lastAttemptAt:this.state.lastAttemptAt,notifiedVersion:this.notifiedVersion}));fs.renameSync(file+'.tmp',file);}catch{}}
+ shouldNotify(){return !!(this.state.status==='ready'&&this.ready&&this.runtime&&this.getConfig().autoUpdateNotify!==false&&this.notifiedVersion!==this.ready.version);}
+ markNotified(){this.notifiedVersion=this.ready?.version;this.persistStatus();}
  set(state){this.state={...this.state,...state};this.onChange(this.snapshot());return this.snapshot();}
  check(){
   if(this.checkTask)return this.checkTask;if(this.state.status==='downloading')return Promise.resolve(this.snapshot());this.snapshot();if(this.ready)return Promise.resolve(this.snapshot());
   this.checkTask=Promise.resolve().then(async()=>{
-   this.set({status:'checking',error:null,progress:0});
-   try{const response=await this.fetcher(API,{headers:{Accept:'application/vnd.github+json','User-Agent':'Lumen/'+this.version},signal:AbortSignal.timeout(20000),redirect:'error'});
-    if(!response.ok)throw Error('GitHub indisponible (HTTP '+response.status+').');this.available=releaseInfo(await response.json(),this.version);
-    this.set({status:this.available?'available':'current',version:this.available?.version,checkedAt:new Date().toISOString()});
-   }catch(e){this.available=null;this.set({status:'error',error:e.message});}return this.snapshot();
-  }).finally(()=>this.checkTask=null);return this.checkTask;
+   this.lastAttempt=this.now();this.set({status:'checking',error:null,progress:0,lastAttemptAt:new Date(this.lastAttempt).toISOString()});
+   try{const response=await this.fetcher(API,{headers:{Accept:'application/vnd.github+json','User-Agent':'Lumen/'+this.version,'Cache-Control':'no-cache'},cache:'no-store',signal:AbortSignal.timeout(20000),redirect:'error'});
+    if(!response.ok){const retry=Number(response.headers?.get('retry-after')),reset=Number(response.headers?.get('x-ratelimit-reset'));if(response.status===429||response.status===403&&response.headers?.get('x-ratelimit-remaining')==='0')this.retryAt=Math.max(this.now()+60000,retry>0?this.now()+retry*1000:reset>0?reset*1000:this.now()+15*60000);throw Error('GitHub indisponible (HTTP '+response.status+').');}this.available=releaseInfo(await response.json(),this.version);this.retryAt=0;
+    this.set({status:this.available?'available':'current',version:this.available?.version,checkedAt:new Date(this.now()).toISOString()});
+   }catch(e){this.available=null;this.set({status:'error',error:e.message==='fetch failed'?'Réseau indisponible. Une nouvelle tentative sera faite automatiquement.':e.message});}this.persistStatus();return this.snapshot();
+  }).finally(()=>{this.checkTask=null;if(!this.autoTask&&!this.downloadTask)this.scheduleNext();});return this.checkTask;
  }
  download(){
   if(this.downloadTask)return this.downloadTask;
@@ -129,23 +135,29 @@ class PortableUpdater {
     try{for await(const chunk of response.body){size+=chunk.length;if(size>asset.size)throw Error('Archive trop grande');hash.update(chunk);let offset=0;while(offset<chunk.length)offset+=fs.writeSync(fd,chunk,offset,chunk.length-offset);if(Date.now()-last>500){last=Date.now();this.set({progress:Math.round(size/asset.size*100)});}}}finally{fs.closeSync(fd);}
     if(size!==asset.size||hash.digest('hex')!==asset.sha256)throw Error('Vérification SHA-256 échouée.');
     fs.renameSync(partial,file);const manifest=path.join(this.folder,'ready.json');fs.writeFileSync(manifest+'.tmp',JSON.stringify(asset));fs.renameSync(manifest+'.tmp',manifest);
-    fs.rmSync(path.join(this.folder,'install-result.json'),{force:true});this.ready=asset;this.blockedVersion=null;this.set({status:'ready',version:asset.version,progress:100});
+    fs.rmSync(path.join(this.folder,'install-result.json'),{force:true});this.ready=asset;this.blockedVersion=null;this.set({status:'ready',version:asset.version,progress:100});await this.prepareRuntime();
    }catch(e){try{fs.rmSync(partial,{force:true});}catch{}this.set({status:'error',error:e.message});}return this.snapshot();
-  }).finally(()=>this.downloadTask=null);return this.downloadTask;
+  }).finally(()=>{this.downloadTask=null;if(!this.autoTask)this.scheduleNext();});return this.downloadTask;
  }
- canInstall(){const s=this.snapshot();return !!this.ready&&s.supported;}
+ prepareRuntime(){if(this.dry||process.platform!=='win32'||this.runtime)return Promise.resolve(this.runtime);if(this.runtimeTask)return this.runtimeTask;this.installError=null;this.runtimeTask=Promise.resolve().then(()=>this.resolveRuntime()).then(file=>{this.runtime=file;}).catch(e=>{this.installError=e.message;}).finally(()=>{this.runtimeTask=null;this.onChange(this.snapshot());});return this.runtimeTask;}
+ canInstall(){const s=this.snapshot();return !!this.ready&&s.supported&&s.runtimeReady;}
  install(){
   if(!this.canInstall())return false;
   try{const r=this.ready,script=path.join(this.folder,'install.ps1');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid}),{encoding:'utf8'});
-   const powershell=path.join(process.env.SystemRoot||'C:\\Windows','System32','WindowsPowerShell','v1.0','powershell.exe');
+   const powershell=this.runtime;
    const child=this.spawnProcess(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});child.on('error',()=>this.set({status:'error',error:'Impossible de lancer l’installation Windows.'}));child.unref();return true;
   }catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});return false;}
  }
- start(){
-  if(this.dry)return;this.stopped=false;
-  const run=async()=>{if(this.stopped||this.getConfig().autoUpdateEnabled===false)return;try{await this.check();if(!this.stopped&&this.getConfig().autoUpdateEnabled!==false&&this.state.status==='available'&&this.available?.version!==this.blockedVersion)await this.download();}catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});}};
-  this.timer=setTimeout(()=>{run();if(!this.stopped){this.interval=setInterval(run,6*3600000);this.interval.unref();}},30000);this.timer.unref();
+ schedule(delay){this.timers.clearTimeout(this.timer);this.nextCheckAt=null;if(this.stopped||this.dry||this.getConfig().autoUpdateEnabled===false||this.ready)return;const wait=Math.max(0,delay,this.retryAt-this.now());this.nextCheckAt=this.now()+wait;this.timer=this.timers.setTimeout(()=>{this.nextCheckAt=null;this.runAutomatic();},wait);this.timer?.unref?.();}
+ scheduleNext(){if(this.state.status==='error'){this.failures++;this.schedule(RETRY_INTERVALS[Math.min(this.failures-1,RETRY_INTERVALS.length-1)]);}else{this.failures=0;this.schedule(AUTO_INTERVAL);}this.onChange(this.snapshot());}
+ runAutomatic(){
+  if(this.autoTask)return this.autoTask;if(this.stopped||this.getConfig().autoUpdateEnabled===false)return Promise.resolve(this.snapshot());
+  this.autoTask=Promise.resolve().then(async()=>{try{await this.check();if(!this.stopped&&this.getConfig().autoUpdateEnabled!==false&&this.state.status==='available'&&this.available?.version!==this.blockedVersion)await this.download();}catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});}return this.snapshot();}).finally(()=>{this.autoTask=null;this.scheduleNext();});return this.autoTask;
  }
- stop(){this.stopped=true;clearTimeout(this.timer);clearInterval(this.interval);}
+ async checkForUpdates(){await(this.getConfig().autoUpdateEnabled===false||this.dry||this.stopped?this.check():this.runAutomatic());if(this.ready)await this.prepareRuntime();return this.snapshot();}
+ preferencesChanged(){this.stop();this.start({delay:0});return this.snapshot();}
+ wake(){if(this.stopped||this.dry||this.getConfig().autoUpdateEnabled===false||this.ready||this.autoTask||this.checkTask||this.downloadTask)return;if(this.now()-this.lastAttempt>=120000)this.schedule(1000);}
+ start({delay=8000}={}){this.stop();if(this.dry)return;this.stopped=false;this.schedule(delay);if(this.ready)this.prepareRuntime();this.onChange(this.snapshot());}
+ stop(){this.stopped=true;this.timers.clearTimeout(this.timer);this.nextCheckAt=null;}
 }
-module.exports={PortableUpdater,newer,releaseInfo,installScript};
+module.exports={PortableUpdater,newer,releaseInfo,installScript,AUTO_INTERVAL,RETRY_INTERVALS};

@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {BrowserWindow}=require('electron'),{WebSocketServer}=require('ws');
-async function run({control,action,windows,errors,data,invalidateData,integrations}){
+async function run({control,action,windows,errors,data,invalidateData,integrations,updater}){
  const checks=[],wait=ms=>new Promise(r=>setTimeout(r,ms)),wc=control.webContents,js=async s=>{try{return await wc.executeJavaScript(s);}catch(e){throw Error(e.message+" :: "+s.slice(0,220));}},actor={sender:wc,senderFrame:wc.mainFrame},root=path.join(__dirname,'../../test-results');
  const check=(name,ok)=>{checks.push({name,ok:!!ok});if(!ok)throw Error(name);};async function until(fn,label){for(let i=0;i<120;i++){try{if(await fn())return;}catch{}await wait(75);}throw Error(label);}
  const stamp=new Date().toISOString(),states=[{entity_id:'sensor.home_power',state:'740',attributes:{friendly_name:'Puissance maison',unit_of_measurement:'W',device_class:'power'},last_changed:stamp,last_updated:stamp},{entity_id:'binary_sensor.gateway',state:'on',attributes:{friendly_name:'Passerelle UniFi'},last_changed:stamp},{entity_id:'binary_sensor.garden_person_occupancy',state:'off',attributes:{friendly_name:'Personne jardin'},last_changed:stamp}];
@@ -59,6 +59,18 @@ async function run({control,action,windows,errors,data,invalidateData,integratio
    await js('revealSetting("remotePanel");document.querySelectorAll(".remote-addresses code").forEach(c=>c.textContent="http://pc-atelier.local:32145");document.getElementById("toast").style.display="none"');await js('document.getElementById("remotePanel").scrollIntoView({block:"start",behavior:"instant"});window.scrollBy(0,-55)');await wait(2000);fs.writeFileSync(path.join(root,'v82-remote.jpg'),(await wc.capturePage()).toJPEG(86));
    await js('revealSetting("studioPanel");document.getElementById("studioInspector").scrollIntoView({block:"center",behavior:"instant"})');await wait(2000);fs.writeFileSync(path.join(root,'v82-studio.jpg'),(await wc.capturePage()).toJPEG(86));
   }finally{await remoteHost.stop();}
+
+  const beforeUpdateWindows=BrowserWindow.getAllWindows().length,shellContents=windows.get(stored.windows[0].id).win.webContents,quotaContents=windows.get(stored.windows[0].id).views[0].webContents;
+  updater.set({status:'available',version:'9.0.0',checkedAt:new Date().toISOString()});
+  await until(()=>js('!!document.querySelector(".appbar .lumen-update-notice:not([hidden])")'),'Pastille de mise à jour');
+  check('Update : proposition visible sans recherche manuelle',await js('document.querySelector(".appbar .lumen-update-notice").textContent.includes("9.0.0")'));
+  await until(()=>shellContents.executeJavaScript('!!document.querySelector(".lumen-update-notice:not([hidden])")'),'Barre de fenêtre mise à jour');check('Update : pastille sur la fenêtre existante, sans fenêtre supplémentaire',BrowserWindow.getAllWindows().length===beforeUpdateWindows);
+  await js('document.querySelector(".appbar .lumen-update-notice").click()');await until(()=>js('!document.getElementById("updaterPanel").closest("[data-settings-page]").hidden'),'Réglages des mises à jour ouverts');check('Update : clic ouvre directement les réglages utiles',await js('document.getElementById("updateStatus").textContent.includes("9.0.0")'));
+  updater.set({status:'downloading',version:'9.0.0',progress:42});await until(()=>js('document.getElementById("updateProgress").value===42'),'Progression live');check('Update : progression reçue en direct, sans polling rapide',await js('!document.getElementById("updateProgress").hidden'));
+  updater.set({status:'ready',version:'9.0.0',progress:100});await until(()=>js('document.querySelector(".appbar .lumen-update-notice").textContent.includes("Installer")'),'Proposition installer');
+  check('Update : notifications configurables et dernière vérification visible',await js('!!document.getElementById("updateNotify")&&document.getElementById("updateLastCheck").textContent.includes("réussie")'));
+  await js('document.getElementById("updaterPanel").scrollIntoView({block:"start",behavior:"instant"});window.scrollBy(0,-50);document.getElementById("toast").style.display="none"');await wait(2000);fs.writeFileSync(path.join(root,'v821-update.jpg'),(await wc.capturePage()).toJPEG(86));
+  updater.set({status:'current',version:undefined});await until(()=>js('document.querySelector(".appbar .lumen-update-notice").hidden'),'Pastille retirée');check('Update : proposition retirée quand Lumen est à jour',await shellContents.executeJavaScript('document.querySelector(".lumen-update-notice").hidden'));
   check('Paramètres de mise à jour présents',await js('!!document.getElementById("updateAuto")&&!!document.getElementById("updateCheck")'));check('Aucune erreur JavaScript',errors.filter(e=>e.type==='console').length===0);
   fs.writeFileSync(path.join(root,'v8-setup-result.json'),JSON.stringify({checks,errors},null,2));
  }finally{for(const s of wss.clients)s.terminate();wss.close();server.closeAllConnections();server.close();}

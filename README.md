@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.0-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.1-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -39,6 +39,12 @@ Au premier lancement, **une seule fenêtre de bienvenue** : connecte les service
 | Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
+
+## Correctif 8.2.1
+
+Les mises à jour sont recherchées toutes les 10 minutes, réessayées après une panne réseau et signalées par une notification silencieuse et une pastille. Le suivi indique les dernières et prochaines vérifications. Le moteur Windows est vérifié avant installation, avec prise en charge de PowerShell 7. [Détails](docs/setup.md#mises-à-jour-automatiques).
+
+![Suivi des mises à jour](docs/screens/updates.jpg)
 
 ## Nouveautés 8.2
 

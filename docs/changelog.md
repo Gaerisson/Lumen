@@ -1,5 +1,15 @@
 # Versions de Lumen
 
+## 8.2.1
+
+- **Recherche automatique** : démarrage après quelques secondes, puis toutes les 10 minutes au lieu de six heures. Réactivation prise en compte immédiatement, vérification après une veille ou un retour réseau si le dernier essai date de plus de deux minutes. Les erreurs réseau sont réessayées avec une attente progressive ; les limites GitHub restent respectées.
+- **Proposition visible** : notification Windows silencieuse, pastille dans les réglages, les barres de fenêtre et les écrans principaux Maison / Quota. Un clic ouvre directement le suivi. Aucun écran supplémentaire ni installation forcée.
+- **Suivi clair** : dernière vérification réussie, prochaine recherche, progression en direct et option de notification. Une recherche manuelle télécharge aussi la version si le téléchargement automatique est activé.
+- **Installateur** : moteur PowerShell vérifié avant de proposer une installation. PowerShell 7 peut être utilisé quand il est déjà installé, y compris le runtime fourni avec Codex s’il est présent. Un moteur absent ou défaillant est signalé ; aucun moteur n’est téléchargé automatiquement et aucun réglage système n’est modifié.
+- **Guide** : l’ancien tutoriel ne s’ouvre plus automatiquement après avoir terminé le guide actuel.
+
+Validation : 144 tests unitaires, dont planification, reprise réseau, quotas GitHub et installation réelle avec conservation du profil ; 44 contrôles du parcours Windows, dont propositions et progression sans fenêtre supplémentaire.
+
 ## 8.2.0
 
 - **PC distants** : découverte LAN à la demande, visibilité désactivable, test authentifié et erreurs compréhensibles. Un nom de PC ou une IP suffit pour l’adresse. Copier une clé ne renouvelle plus les clés existantes ; les changements de clé et les requêtes en cours ne réutilisent plus une ancienne erreur en cache.
