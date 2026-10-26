@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.3-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.4-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -39,6 +39,10 @@ Au premier lancement, **une seule fenêtre de bienvenue** : connecte les service
 | Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
+
+## Mises à jour 8.2.4
+
+Installation depuis les releases GitHub, avec une option de redémarrage automatique : préavis de 60 secondes, report d’une heure et pause pendant les réglages ou les alertes. Lumen attend que l’installateur ait validé et extrait l’archive avant de quitter. La version réellement exécutée confirme ensuite l’installation. [Fonctionnement](docs/setup.md#mises-à-jour-automatiques).
 
 ## Correctif 8.2.3
 

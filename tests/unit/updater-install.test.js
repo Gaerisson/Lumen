@@ -14,3 +14,20 @@ try { foreach ($item in @(@{name='Lumen.exe';text='new runtime'},@{name='resourc
  fs.unlinkSync(archive);zip(true);sha256=crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');r=run(installScript({appDir,archive,sha256,version:'9.0.0',pid:0,restart:false}));assert.equal(r.status,1);assert.equal(fs.existsSync(path.join(dir,'escaped.txt')),false);assert.equal(fs.readFileSync(path.join(appDir,'Lumen.exe'),'utf8'),'new runtime');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('mise à jour Windows : prépare sans quitter, attend le processus puis installe ; annulation protège les fichiers',{skip:process.platform!=='win32'},async()=>{
+ const {spawn}=require('node:child_process'),runtime=await resolvePowerShell(),dir=fs.mkdtempSync(path.join(os.tmpdir(),'lumen-handoff-native-')),appDir=path.join(dir,'app'),archive=path.join(dir,'update.zip'),readyFile=path.join(dir,'ready.flag'),cancelFile=path.join(dir,'cancel.flag'),ps=s=>"'"+s.replaceAll("'","''")+"'";
+ const wait=ms=>new Promise(r=>setTimeout(r,ms)),until=async fn=>{for(let i=0;i<200;i++){if(fn())return;await wait(50);}throw Error('Installer preparation timeout');};
+ const run=source=>{const file=path.join(dir,'script.ps1');fs.writeFileSync(file,source);return spawn(runtime,['-NoProfile','-NonInteractive','-File',file],{windowsHide:true,stdio:['ignore','pipe','pipe']});};
+ const complete=child=>new Promise((resolve,reject)=>{let stderr='';child.stderr.on('data',b=>stderr+=b);child.once('error',reject);child.once('exit',code=>resolve({code,stderr}));});
+ let worker;
+ try{
+  fs.mkdirSync(path.join(appDir,'data'),{recursive:true});fs.writeFileSync(path.join(appDir,'Lumen.exe'),'old runtime');fs.writeFileSync(path.join(appDir,'data','settings.json'),'private settings');fs.writeFileSync(path.join(appDir,'data','Local State'),'private encryption context');
+  const zip=run(`Add-Type -AssemblyName System.IO.Compression.FileSystem\n$z=[IO.Compression.ZipFile]::Open(${ps(archive)},'Create')\nforeach($i in @(@{name='Lumen/Lumen.exe';text='new runtime'},@{name='Lumen/resources/app/package.json';text='{"version":"9.0.0","main":"src/main/main.js"}'})){ $e=$z.CreateEntry($i.name);$w=[IO.StreamWriter]::new($e.Open());$w.Write($i.text);$w.Dispose() };$z.Dispose()`);assert.equal((await complete(zip)).code,0);
+  const sha256=crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
+  worker=spawn(process.execPath,['-e',"process.stdin.once('data',()=>process.exit(0));setInterval(()=>{},1000)"],{windowsHide:true,stdio:['pipe','ignore','ignore']});
+  const helper=run(installScript({appDir,archive,sha256,version:'9.0.0',pid:worker.pid,restart:false,readyFile,cancelFile})),result=complete(helper);
+  await until(()=>fs.existsSync(readyFile));assert.equal(fs.readFileSync(path.join(appDir,'Lumen.exe'),'utf8'),'old runtime');worker.stdin.end('quit');const installed=await result;assert.equal(installed.code,0,installed.stderr);assert.equal(fs.readFileSync(path.join(appDir,'Lumen.exe'),'utf8'),'new runtime');assert.equal(fs.readFileSync(path.join(appDir,'data','Local State'),'utf8'),'private encryption context');assert.equal(fs.readFileSync(path.join(appDir,'data','settings.json'),'utf8'),'private settings');
+  fs.unlinkSync(readyFile);fs.writeFileSync(cancelFile,'cancel');const canceled=await complete(run(installScript({appDir,archive,sha256,version:'9.0.0',pid:0,restart:false,readyFile,cancelFile})));assert.equal(canceled.code,1);assert.equal(fs.existsSync(readyFile),false);assert.equal(fs.readFileSync(path.join(appDir,'Lumen.exe'),'utf8'),'new runtime');
+ }finally{worker?.stdin?.end('quit');fs.rmSync(dir,{recursive:true,force:true});}
+});

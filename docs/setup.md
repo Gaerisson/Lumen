@@ -34,7 +34,9 @@ La sauvegarde du studio conserve les fenêtres inchangées et la connexion Home 
 
 ## Mises à jour automatiques
 
-La version Windows portable vérifie les versions stables de `Gaerisson/Lumen` sur GitHub. Elle télécharge l’archive Windows et contrôle son SHA-256 publié par GitHub avant de la préparer. Les réglages dans **Connexions** permettent de désactiver le téléchargement ou l’installation à la fermeture, de vérifier manuellement et d’installer une version prête immédiatement.
+La version Windows portable vérifie les versions stables de `Gaerisson/Lumen` sur GitHub. Elle télécharge l’archive Windows et contrôle son SHA-256 publié par GitHub avant de la préparer. Les réglages dans **Connexions** proposent le téléchargement automatique, l’installation à la fermeture complète, ou **Installer et relancer automatiquement**. Ce dernier mode est désactivé par défaut sur une installation neuve.
+
+En mode installation automatique, une version prête déclenche un **préavis de 60 secondes**. Un clic sur le décompte des panneaux, ou le bouton **Reporter d’une heure**, retarde le redémarrage pour la session courante. Lumen attend la fermeture des réglages, la fin d’une alarme, d’un réveil, d’une détection caméra ou du résumé du matin, puis démarre un nouveau préavis complet. Le bouton **Installer & relancer** permet aussi de lancer l’installation explicitement.
 
 La recherche commence quelques secondes après le lancement, puis revient toutes les **10 minutes**. Une erreur réseau est réessayée après 1, 2, 5 puis 10 minutes, en respectant les délais imposés par GitHub. Au retour d’une veille ou d’une connexion, une recherche est anticipée si le dernier essai date de plus de deux minutes. Réactiver l’option démarre une recherche immédiatement.
 
@@ -42,7 +44,7 @@ Une **notification silencieuse** et une **pastille persistante** signalent une v
 
 Le moteur d’installation est vérifié : PowerShell 7 est utilisé s’il est disponible, sinon Windows PowerShell. Le runtime PowerShell 7 fourni avec Codex peut aussi être utilisé s’il est présent. Si aucun moteur ne fonctionne, l’erreur reste affichée et l’installation est bloquée ; l’archive peut être extraite manuellement. Lumen ne télécharge pas de moteur et ne modifie pas Windows pour contourner ce problème.
 
-L’installation attend la fermeture de Lumen, vérifie de nouveau l’archive et sa structure, conserve `data/`, remplace les fichiers de l’application puis relance Lumen. Une sauvegarde des fichiers remplacés permet un retour en cas d’échec de copie. Les archives contenant des chemins hors destination ou des données de profil sont refusées. L’app doit être extraite dans un dossier accessible en écriture. Le binaire reste non signé ; la vérification SHA-256 ne remplace pas une signature de code.
+L’installateur vérifie de nouveau l’archive, l’extrait dans un dossier temporaire et contrôle l’accès au dossier de destination **pendant que Lumen reste ouvert**. Il confirme sa préparation avant que Lumen quitte. Il attend ensuite la fin du processus, conserve `data/`, remplace les fichiers de l’application puis relance Lumen. Un démarrage impossible du helper ou une préparation échouée laisse l’application ouverte avec une erreur réessayable. Une sauvegarde des fichiers remplacés permet un retour en cas d’échec de copie. Au lancement suivant, **Installation confirmée** apparaît seulement si la version exécutée correspond au résultat de l’installateur. Les archives contenant des chemins hors destination ou des données de profil sont refusées. L’app doit être extraite dans un dossier accessible en écriture. Le binaire reste non signé ; la vérification SHA-256 ne remplace pas une signature de code.
 
 Fermer une carte ou une fenêtre ne quitte pas nécessairement Lumen. Pour déclencher l’installation à la fermeture, utilise **Quitter Lumen** dans son icône près de l’horloge Windows, ou **Installer & relancer Lumen** dans les réglages.
 

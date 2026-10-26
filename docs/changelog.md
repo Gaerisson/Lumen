@@ -1,5 +1,14 @@
 # Versions de Lumen
 
+## 8.2.4
+
+- **Installation automatique optionnelle** : depuis les releases stables GitHub, préavis de 60 secondes et report d’une heure depuis les panneaux ou Connexions. Attend la fermeture des réglages et la fin des alarmes, réveils, détections et résumé du matin. Désactivée par défaut sur les nouveaux profils.
+- **Passage à l’installateur** : Lumen reste ouvert pendant la validation SHA-256, l’extraction et le contrôle d’accès au dossier. Il quitte seulement après confirmation du helper Windows ; un échec de lancement ou de préparation reste réessayable dans l’app.
+- **Suivi** : préparation, redémarrage et résultat lisibles. Une installation est confirmée au lancement uniquement si la version exécutée correspond au résultat de l’installateur.
+- **Conservation** : profils et contexte de chiffrement restent en place. L’installateur attend le processus Lumen et ne force aucun arrêt.
+
+Validation : 168 tests unitaires et 58 contrôles Windows ; attente d’un vrai processus isolé, annulation avant copie, conservation du profil, refus des chemins hors archive, report, pause et absence de relance en boucle.
+
 ## 8.2.3
 
 - **Écrans au démarrage** : le moniteur préféré est mémorisé avec son modèle, ses caractéristiques et sa disposition, en complément de l’identifiant Windows. Les anciennes configurations sont migrées à partir de l’écran ou des coordonnées déjà sauvegardés.

@@ -1,4 +1,4 @@
-# Lumen 8.2.3 · © Gaerisson
+# Lumen 8.2.4 · © Gaerisson
 
 Vibecodé avec OpenAI Codex.
 
@@ -14,6 +14,6 @@ Spotify se connecte directement avec un assistant dans Services & modules. Il fa
 
 Audio & réveil propose NRJ, RFI, franceinfo, un podcast personnel ou un flash lu localement, avec préécoute des flux et de la voix. Les écrans de l’alarme, du réveil, du résumé et des détections sont sélectionnables séparément dans Connexions. La veille utilise les fenêtres existantes pour éviter les doublons dans la barre des tâches.
 
-Les mises à jour sont recherchées sur GitHub, téléchargées et vérifiées automatiquement. L’installation peut se faire à la fermeture, ou manuellement depuis Connexions. Ces deux automatismes sont désactivables. Les clés et réglages de data/ sont conservés.
+Les mises à jour sont recherchées sur GitHub, téléchargées et vérifiées automatiquement. Dans Connexions, active « Installer et relancer automatiquement » pour un redémarrage avec préavis de 60 secondes, reportable d’une heure. Il attend la fermeture des réglages et la fin des alertes. Sinon, l’installation se fait à la fermeture complète ou avec « Installer & relancer ». Lumen reste ouvert si la préparation échoue. Les clés et réglages de data/ sont conservés ; la version relancée confirme l’installation.
 
 [README.md](../README.md) détaille les modules, les limites, l’installation et le développement. [SECURITY.md](../SECURITY.md) explique le partage distant. Les marques des connecteurs appartiennent à leurs détenteurs, sans affiliation officielle.

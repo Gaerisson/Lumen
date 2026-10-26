@@ -1,6 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {spawn}=require('node:child_process');
 const {resolvePowerShell}=require('./update-runtime.js');
+const {waitForInstaller}=require('./update-handoff.js');
 const REPOSITORY='Gaerisson/Lumen',API='https://api.github.com/repos/'+REPOSITORY+'/releases/latest';
 const AUTO_INTERVAL=10*60*1000,RETRY_INTERVALS=[60000,120000,300000,600000];
 function newer(a,b){const parse=v=>{const m=/^v?(\d+)\.(\d+)\.(\d+)$/.exec(v||'');return m?m.slice(1).map(Number):null;},x=parse(a),y=parse(b);return !!x&&!!y&&x.some((v,i)=>v>y[i]&&x.slice(0,i).every((n,j)=>n===y[j]));}
@@ -14,7 +15,7 @@ function releaseInfo(release,current){
  return{version,name,url:url.href,size:asset.size,sha256:digest.slice(7).toLowerCase()};
 }
 const ps=s=>"'"+String(s).replaceAll("'","''")+"'";
-function installScript({appDir,archive,sha256,version,pid,restart=true}){
+function installScript({appDir,archive,sha256,version,pid,restart=true,readyFile,cancelFile}){
  if(!path.isAbsolute(appDir)||!path.isAbsolute(archive)||!/^[a-f0-9]{64}$/.test(sha256)||!/^\d+\.\d+\.\d+$/.test(version)||!Number.isInteger(pid)||pid<0)throw Error('Installation invalide');
  return `$ErrorActionPreference = 'Stop'
 $target = [IO.Path]::GetFullPath(${ps(appDir)})
@@ -24,6 +25,8 @@ $backup = Join-Path ([IO.Path]::GetDirectoryName($archive)) ('backup-' + [Guid]:
 $status = Join-Path ([IO.Path]::GetDirectoryName($archive)) 'install-result.json'
 $copied = [Collections.Generic.List[string]]::new()
 $finished = $false
+$readyFile = ${ps(readyFile||'')}
+$cancelFile = ${ps(cancelFile||'')}
 try {
  $hash = [Security.Cryptography.SHA256]::Create()
  $inputFile = [IO.File]::OpenRead($archive)
@@ -58,7 +61,22 @@ try {
  } finally { $zip.Dispose() }
  $package = Get-Content -LiteralPath (Join-Path $stage 'resources/app/package.json') -Raw | ConvertFrom-Json
  if ($package.version -ne ${ps(version)} -or $package.main -ne 'src/main/main.js') { throw 'Version application invalide' }
- if (${pid} -gt 0) { $process = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($process) { if (-not $process.WaitForExit(120000)) { throw 'Lumen reste ouvert' } } }
+ if ($cancelFile -and (Test-Path -LiteralPath $cancelFile)) { throw 'Installation annulee' }
+ [IO.Directory]::CreateDirectory($target) | Out-Null
+ $probePath = Join-Path $target ('.lumen-update-' + [Guid]::NewGuid().ToString('N'))
+ $probe = [IO.FileStream]::new($probePath,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None,4096,[IO.FileOptions]::DeleteOnClose)
+ $probe.Dispose()
+ if ($readyFile) { [IO.File]::WriteAllText($readyFile,'ready') }
+ if (${pid} -gt 0) {
+  $process = Get-Process -Id ${pid} -ErrorAction SilentlyContinue
+  if ($process) {
+   $deadline = [DateTime]::UtcNow.AddSeconds(120)
+   while (-not $process.WaitForExit(250)) {
+    if (($cancelFile -and (Test-Path -LiteralPath $cancelFile)) -or [DateTime]::UtcNow -gt $deadline) { throw 'Lumen reste ouvert' }
+   }
+  }
+ }
+ if ($cancelFile -and (Test-Path -LiteralPath $cancelFile)) { throw 'Installation annulee' }
  foreach ($file in Get-ChildItem -LiteralPath $stage -File -Recurse) {
   $relative = $file.FullName.Substring($stage.Length + 1)
   $destination = [IO.Path]::GetFullPath((Join-Path $target $relative))
@@ -70,7 +88,7 @@ try {
   Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
  }
  $finished = $true
- @{ok=$true;version=${ps(version)}} | ConvertTo-Json | Set-Content -LiteralPath $status -Encoding UTF8
+ @{ok=$true;version=${ps(version)};completedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath $status -Encoding UTF8
 } catch {
  foreach ($relative in $copied) {
   $destination = Join-Path $target $relative
@@ -84,16 +102,17 @@ foreach ($folder in @($stage,$backup)) {
  $updateRoot = [IO.Path]::GetDirectoryName($archive) + [IO.Path]::DirectorySeparatorChar
  if (($finished -or [IO.Path]::GetFileName($resolvedFolder).StartsWith('stage-')) -and $resolvedFolder.StartsWith($updateRoot,[StringComparison]::OrdinalIgnoreCase) -and $resolvedFolder -ne $target -and [IO.Path]::GetFileName($resolvedFolder) -match '^(stage|backup)-[a-f0-9]{32}$') { Remove-Item -LiteralPath $resolvedFolder -Recurse -Force -ErrorAction SilentlyContinue }
 }
-if (${restart?'$true':'$false'} -and (Test-Path -LiteralPath (Join-Path $target 'Lumen.exe'))) { Start-Process -FilePath (Join-Path $target 'Lumen.exe') -WorkingDirectory $target -WindowStyle Hidden }
+if (${restart?'$true':'$false'} -and (-not $readyFile -or $finished -or $copied.Count -gt 0) -and (Test-Path -LiteralPath (Join-Path $target 'Lumen.exe'))) { Start-Process -FilePath (Join-Path $target 'Lumen.exe') -WorkingDirectory $target -WindowStyle Hidden }
 if (-not $finished) { exit 1 }
 `;
 }
 class PortableUpdater {
- constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false,spawnProcess=spawn,now=Date.now,timers={setTimeout,clearTimeout},resolveRuntime=resolvePowerShell}){
-  Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry,spawnProcess,now,timers,resolveRuntime});
+ constructor({version,exe,dataDir,getConfig,fetcher=fetch,onChange=()=>{},dry=false,spawnProcess=spawn,now=Date.now,timers={setTimeout,clearTimeout},resolveRuntime=resolvePowerShell,handoff=waitForInstaller}){
+  Object.assign(this,{version,exe,dataDir,getConfig,fetcher,onChange,dry,spawnProcess,now,timers,resolveRuntime,handoff});
   this.folder=path.join(dataDir,'updates');this.state={status:'idle',current:version};this.available=null;this.ready=null;
   this.checkTask=null;this.downloadTask=null;this.autoTask=null;this.installRequested=false;this.stopped=true;this.failures=0;this.lastAttempt=0;this.retryAt=0;this.nextCheckAt=null;
   try{const journal=JSON.parse(fs.readFileSync(path.join(this.folder,'status.json'),'utf8'));this.notifiedVersion=journal.notifiedVersion;this.state.checkedAt=journal.checkedAt;this.state.lastAttemptAt=journal.lastAttemptAt;}catch{}
+  try{const result=JSON.parse(fs.readFileSync(path.join(this.folder,'install-result.json'),'utf8').replace(/^\uFEFF/,''));if(result.ok&&result.version===version)this.state.lastInstall={version,completedAt:result.completedAt||null,verified:true};}catch{}
   try{
    const r=JSON.parse(fs.readFileSync(path.join(this.folder,'ready.json'),'utf8'));
    if(newer(r.version,version)&&/^[a-f0-9]{64}$/.test(r.sha256)&&r.name==='Lumen-'+r.version+'-Windows-x64.zip'){
@@ -139,14 +158,18 @@ class PortableUpdater {
    }catch(e){try{fs.rmSync(partial,{force:true});}catch{}this.set({status:'error',error:e.message});}return this.snapshot();
   }).finally(()=>{this.downloadTask=null;if(!this.autoTask)this.scheduleNext();});return this.downloadTask;
  }
- prepareRuntime(){if(this.dry||process.platform!=='win32'||this.runtime)return Promise.resolve(this.runtime);if(this.runtimeTask)return this.runtimeTask;this.installError=null;this.runtimeTask=Promise.resolve().then(()=>this.resolveRuntime()).then(file=>{this.runtime=file;}).catch(e=>{this.installError=e.message;}).finally(()=>{this.runtimeTask=null;this.onChange(this.snapshot());});return this.runtimeTask;}
+ prepareRuntime(){if(this.dry||process.platform!=='win32'||this.runtime&&!this.installError)return Promise.resolve(this.runtime);if(this.runtimeTask)return this.runtimeTask;this.runtime=null;this.installError=null;this.runtimeTask=Promise.resolve().then(()=>this.resolveRuntime()).then(file=>{this.runtime=file;}).catch(e=>{this.installError=e.message;}).finally(()=>{this.runtimeTask=null;this.onChange(this.snapshot());});return this.runtimeTask;}
  canInstall(){const s=this.snapshot();return !!this.ready&&s.supported&&s.runtimeReady;}
- install(){
+ async install(){
+  if(this.installTask)return this.installTask;
   if(!this.canInstall())return false;
-  try{const r=this.ready,script=path.join(this.folder,'install.ps1');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid}),{encoding:'utf8'});
+  this.installTask=Promise.resolve().then(async()=>{try{const r=this.ready,script=path.join(this.folder,'install.ps1'),id=crypto.randomUUID(),readyFile=path.join(this.folder,'prepared-'+id+'.flag'),cancelFile=path.join(this.folder,'cancel-'+id+'.flag');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid,readyFile,cancelFile}),{encoding:'utf8'});
+   this.set({status:'preparing',error:null});this.installError=null;
    const powershell=this.runtime;
-   const child=this.spawnProcess(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});child.on('error',()=>this.set({status:'error',error:'Impossible de lancer l’installation Windows.'}));child.unref();return true;
-  }catch{this.set({status:'error',error:'Le dossier de Lumen doit être accessible en écriture.'});return false;}
+   const child=this.spawnProcess(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});
+   if(!await this.handoff(child,{readyFile,cancelFile}))throw Error('L’installateur Windows n’a pas pu préparer la mise à jour. Lumen reste ouvert ; vérifie l’espace disque et les droits du dossier.');
+   this.set({status:'installing'});return true;
+  }catch(e){this.installError=e.message||'Impossible de lancer l’installation Windows.';this.set({status:'ready',error:null});return false;}}).finally(()=>{this.installTask=null;});return this.installTask;
  }
  schedule(delay){this.timers.clearTimeout(this.timer);this.nextCheckAt=null;if(this.stopped||this.dry||this.getConfig().autoUpdateEnabled===false||this.ready)return;const wait=Math.max(0,delay,this.retryAt-this.now());this.nextCheckAt=this.now()+wait;this.timer=this.timers.setTimeout(()=>{this.nextCheckAt=null;this.runAutomatic();},wait);this.timer?.unref?.();}
  scheduleNext(){if(this.state.status==='error'){this.failures++;this.schedule(RETRY_INTERVALS[Math.min(this.failures-1,RETRY_INTERVALS.length-1)]);}else{this.failures=0;this.schedule(AUTO_INTERVAL);}this.onChange(this.snapshot());}
