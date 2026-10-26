@@ -1,6 +1,20 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const {installScript}=require('../../src/main/portable-updater.js');
 const {resolvePowerShell}=require('../../src/main/update-runtime.js');
+const {PortableUpdater}=require('../../src/main/portable-updater.js');
+
+test('installation réelle : le lancement masqué exécute le helper et confirme la préparation',{skip:process.platform!=='win32'},async()=>{
+ const {spawn}=require('node:child_process'),runtime=await resolvePowerShell(),dir=fs.mkdtempSync(path.join(os.tmpdir(),"lumen's real-launch-")),folder=path.join(dir,'data','updates'),archive=path.join(folder,'Lumen-9.0.0-Windows-x64.zip');let child,exit;
+ fs.mkdirSync(folder,{recursive:true});fs.writeFileSync(path.join(dir,'Lumen.exe'),'old runtime');
+ try{
+  const zipScript=path.join(dir,'zip.ps1');fs.writeFileSync(zipScript,`Add-Type -AssemblyName System.IO.Compression.FileSystem\n$z=[IO.Compression.ZipFile]::Open('${archive.replaceAll("'","''")}','Create')\nforeach($i in @(@{name='Lumen.exe';text='new runtime'},@{name='resources/app/package.json';text='{"version":"9.0.0","main":"src/main/main.js"}'})){ $e=$z.CreateEntry($i.name);$w=[IO.StreamWriter]::new($e.Open());$w.Write($i.text);$w.Dispose() };$z.Dispose()`);
+  const zipped=spawnSync(runtime,['-NoProfile','-NonInteractive','-File',zipScript],{windowsHide:true,encoding:'utf8',timeout:30000});assert.equal(zipped.status,0,zipped.stderr);
+  const ready={version:'9.0.0',name:path.basename(archive),size:fs.statSync(archive).size,sha256:crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex')};fs.writeFileSync(path.join(folder,'ready.json'),JSON.stringify(ready));
+  const u=new PortableUpdater({version:'8.2.6',exe:path.join(dir,'Lumen.exe'),dataDir:path.join(dir,'data'),getConfig:()=>({}),resolveRuntime:async()=>runtime,spawnProcess:(file,args,options)=>{assert.equal(options.detached,false);child=spawn(file,args,options);exit=new Promise(r=>child.once('exit',r));return child;}});await u.prepareRuntime();
+  assert.equal(await u.install({restart:false}),true);child.ref();assert.equal(u.snapshot().status,'installing');assert.equal(fs.readFileSync(path.join(dir,'Lumen.exe'),'utf8'),'old runtime');
+  const script=fs.readFileSync(path.join(folder,'install.ps1'),'utf8'),cancel=/^\$cancelFile = '((?:[^']|'')*)'$/m.exec(script)[1].replaceAll("''","'");assert.ok(cancel.startsWith(dir+path.sep));fs.writeFileSync(cancel,'cancel');assert.equal(await exit,0);const status=path.join(folder,'install-result.json');for(let i=0;i<200&&!fs.existsSync(status);i++)await new Promise(r=>setTimeout(r,50));assert.equal(JSON.parse(fs.readFileSync(status,'utf8')).ok,false);assert.equal(fs.readFileSync(path.join(dir,'Lumen.exe'),'utf8'),'old runtime');u.stop();
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
 test('mise à jour Windows : installe, préserve data et refuse une archive traversante',{skip:process.platform!=='win32'},async()=>{
  const runtime=await resolvePowerShell();
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"lumen's-update-")),appDir=path.join(dir,'app'),archive=path.join(dir,'update.zip'),ps=s=>"'"+s.replaceAll("'","''")+"'";

@@ -1,5 +1,12 @@
 # Versions de Lumen
 
+## 8.2.6
+
+- **Lancement du helper Windows** : un lanceur masqué crée l’installateur indépendant avec `Start-Process -WindowStyle Hidden`, au lieu du lancement détaché qui pouvait quitter avec un code 0 sans exécuter le script. La confirmation de préparation du véritable installateur reste obligatoire avant toute fermeture de Lumen.
+- **Test réel** : l’appel `PortableUpdater.install()` lance le vrai moteur et attend le marqueur de préparation ; l’annulation laisse l’ancien programme intact. Ce test complète les tests du script et du passage au helper.
+
+Validation : 170 tests unitaires. Inclut les automatismes de 8.2.4 et le délai PowerShell de 8.2.5 ; interface validée avec 58 contrôles Windows.
+
 ## 8.2.5
 
 - **Démarrage PowerShell lent** : le contrôle du moteur attend jusqu’à 20 secondes au lieu de 5. Un démarrage de 6 à 7 secondes observé sous charge ne fait plus croire qu’aucun moteur n’est disponible. La réponse du moteur reste vérifiée, le délai reste borné et l’app reste ouverte en cas d’échec.

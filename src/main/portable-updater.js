@@ -1,7 +1,7 @@
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {spawn}=require('node:child_process');
 const {resolvePowerShell}=require('./update-runtime.js');
-const {waitForInstaller}=require('./update-handoff.js');
+const {waitForInstaller,installerLauncher}=require('./update-handoff.js');
 const REPOSITORY='Gaerisson/Lumen',API='https://api.github.com/repos/'+REPOSITORY+'/releases/latest';
 const AUTO_INTERVAL=10*60*1000,RETRY_INTERVALS=[60000,120000,300000,600000];
 function newer(a,b){const parse=v=>{const m=/^v?(\d+)\.(\d+)\.(\d+)$/.exec(v||'');return m?m.slice(1).map(Number):null;},x=parse(a),y=parse(b);return !!x&&!!y&&x.some((v,i)=>v>y[i]&&x.slice(0,i).every((n,j)=>n===y[j]));}
@@ -160,14 +160,14 @@ class PortableUpdater {
  }
  prepareRuntime(){if(this.dry||process.platform!=='win32'||this.runtime&&!this.installError)return Promise.resolve(this.runtime);if(this.runtimeTask)return this.runtimeTask;this.runtime=null;this.installError=null;this.runtimeTask=Promise.resolve().then(()=>this.resolveRuntime()).then(file=>{this.runtime=file;}).catch(e=>{this.installError=e.message;}).finally(()=>{this.runtimeTask=null;this.onChange(this.snapshot());});return this.runtimeTask;}
  canInstall(){const s=this.snapshot();return !!this.ready&&s.supported&&s.runtimeReady;}
- async install(){
+ async install({restart=true}={}){
   if(this.installTask)return this.installTask;
   if(!this.canInstall())return false;
-  this.installTask=Promise.resolve().then(async()=>{try{const r=this.ready,script=path.join(this.folder,'install.ps1'),id=crypto.randomUUID(),readyFile=path.join(this.folder,'prepared-'+id+'.flag'),cancelFile=path.join(this.folder,'cancel-'+id+'.flag');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid,readyFile,cancelFile}),{encoding:'utf8'});
+  this.installTask=Promise.resolve().then(async()=>{try{const r=this.ready,script=path.join(this.folder,'install.ps1'),id=crypto.randomUUID(),readyFile=path.join(this.folder,'prepared-'+id+'.flag'),cancelFile=path.join(this.folder,'cancel-'+id+'.flag');fs.writeFileSync(script,installScript({appDir:path.dirname(this.exe),archive:path.join(this.folder,r.name),sha256:r.sha256,version:r.version,pid:process.pid,restart,readyFile,cancelFile}),{encoding:'utf8'});
    this.set({status:'preparing',error:null});this.installError=null;
    const powershell=this.runtime;
-   const child=this.spawnProcess(powershell,['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{detached:true,windowsHide:true,stdio:'ignore'});
-   if(!await this.handoff(child,{readyFile,cancelFile}))throw Error('L’installateur Windows n’a pas pu préparer la mise à jour. Lumen reste ouvert ; vérifie l’espace disque et les droits du dossier.');
+   const child=this.spawnProcess(powershell,installerLauncher(powershell,script),{detached:false,windowsHide:true,stdio:'ignore'});
+   if(!await this.handoff(child,{readyFile,cancelFile,launcher:true}))throw Error('L’installateur Windows n’a pas pu préparer la mise à jour. Lumen reste ouvert ; vérifie l’espace disque et les droits du dossier.');
    this.set({status:'installing'});return true;
   }catch(e){this.installError=e.message||'Impossible de lancer l’installation Windows.';this.set({status:'ready',error:null});return false;}}).finally(()=>{this.installTask=null;});return this.installTask;
  }
