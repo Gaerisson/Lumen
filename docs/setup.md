@@ -12,6 +12,10 @@ La navigation principale propose **Mon studio**, **Connexions**, **Apparence**. 
 
 ## Composer plus facilement
 
+Lumen mémorise le moniteur préféré de chaque fenêtre avec plusieurs repères, car l’identifiant Windows peut changer après un redémarrage. Si ce moniteur est temporairement absent, la fenêtre reste accessible sur un écran disponible sans remplacer son choix enregistré. Elle retourne sur l’écran préféré quand Windows le détecte. Un déplacement manuel ou un nouveau choix dans le studio devient la nouvelle préférence.
+
+Les fenêtres conservent leur état masqué ou réduit pendant cette restauration. Les positions de base restent séparées des coordonnées temporaires de veille. Si plusieurs moniteurs ont exactement le même modèle et ne sont pas distingués par leur identifiant, leur disposition dans le bureau sert de repère supplémentaire.
+
 Le studio compose le **contenu d’une fenêtre Lumen**, pas le bureau Windows. Choisis d’abord l’écran physique, puis la fenêtre dans la liste. Le cadre intitulé « Contenu de la fenêtre » montre uniquement ses modules, avec les proportions de cette fenêtre. « Plein écran » utilise les proportions du moniteur. Plusieurs fenêtres peuvent partager un écran.
 
 Clique sur une carte pour ouvrir ses options sous l’aperçu : titre et présentation compacte ou détaillée. **Proxmox** propose tout, nœuds, VM et CT, VM seules, CT seuls ou sauvegardes. Choisis les métriques CPU, mémoire, disque, état et sauvegarde, ou sélectionne précisément les entités dans Home Assistant. Ces choix s’appliquent à cette carte ; une autre carte peut afficher une autre vue du même serveur.

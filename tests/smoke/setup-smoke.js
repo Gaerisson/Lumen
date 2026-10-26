@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {BrowserWindow,clipboard}=require('electron'),{WebSocketServer}=require('ws');
-async function run({control,action,windows,errors,data,invalidateData,integrations,updater}){
+async function run({control,action,windows,errors,data,invalidateData,integrations,updater,placements,screen}){
  const checks=[],wait=ms=>new Promise(r=>setTimeout(r,ms)),wc=control.webContents,js=async s=>{try{return await wc.executeJavaScript(s);}catch(e){throw Error(e.message+" :: "+s.slice(0,220));}},actor={sender:wc,senderFrame:wc.mainFrame},root=path.join(__dirname,'../../test-results');
  const check=(name,ok)=>{checks.push({name,ok:!!ok});if(!ok)throw Error(name);};async function until(fn,label){for(let i=0;i<120;i++){try{if(await fn())return;}catch{}await wait(75);}throw Error(label);}
  const stamp=new Date().toISOString(),states=[{entity_id:'sensor.home_power',state:'740',attributes:{friendly_name:'Puissance maison',unit_of_measurement:'W',device_class:'power'},last_changed:stamp,last_updated:stamp},{entity_id:'binary_sensor.gateway',state:'on',attributes:{friendly_name:'Passerelle UniFi'},last_changed:stamp},{entity_id:'binary_sensor.garden_person_occupancy',state:'off',attributes:{friendly_name:'Personne jardin'},last_changed:stamp}];
@@ -82,6 +82,20 @@ async function run({control,action,windows,errors,data,invalidateData,integratio
   check('Update : notifications configurables et dernière vérification visible',await js('!!document.getElementById("updateNotify")&&document.getElementById("updateLastCheck").textContent.includes("réussie")'));
   await js('document.getElementById("updaterPanel").scrollIntoView({block:"start",behavior:"instant"});window.scrollBy(0,-50);document.getElementById("toast").style.display="none"');await wait(2000);fs.writeFileSync(path.join(root,'v821-update.jpg'),(await wc.capturePage()).toJPEG(86));
   updater.set({status:'current',version:undefined});await until(()=>js('document.querySelector(".appbar .lumen-update-notice").hidden'),'Pastille retirée');check('Update : proposition retirée quand Lumen est à jour',await shellContents.executeJavaScript('document.querySelector(".lumen-update-notice").hidden'));
+
+  const allDisplays=screen.getAllDisplays(),chosen=[...allDisplays].sort((a,b)=>a.bounds.y-b.bounds.y)[0],other=allDisplays.find(d=>d.id!==chosen.id)||chosen;
+  const {displayReference}=require('../../src/shared/display-placement.js'),layoutBefore=(await action(actor,'get')).config.windows;
+  const placementWindow={id:'qa-placement',name:'Placement · démo',displayId:'ancienne-identite',displayRef:displayReference(chosen),fullscreen:true,alwaysOnTop:false,bounds:{x:chosen.workArea.x+30,y:chosen.workArea.y+30,width:640,height:440},columns:1,rows:1,tiles:[{type:'clock',col:1,row:1,colSpan:1,rowSpan:1}]};
+  await action(actor,'saveLayout',{windows:[...layoutBefore,placementWindow]});const placed=windows.get('qa-placement').win;
+  await until(()=>placed.isFullScreen()&&screen.getDisplayMatching(placed.getBounds()).id===chosen.id,'Plein écran sur le moniteur préféré');
+  check('Écrans : identité périmée restaurée sur le bon moniteur natif',screen.getDisplayMatching(placed.getBounds()).id===chosen.id);
+  await wait(1000);placed.setFullScreen(false);await until(()=>!placed.isFullScreen(),'Sortie temporaire du plein écran');placed.setBounds({x:other.workArea.x+60,y:other.workArea.y+60,width:640,height:440});await wait(400);
+  const remembered=(await action(actor,'get')).config.windows.find(w=>w.id==='qa-placement');check('Écrans : mouvement automatique ne remplace pas le choix enregistré',String(remembered.displayId)===String(chosen.id)&&remembered.fullscreen);
+  placements.reconcile();await until(()=>placed.isFullScreen()&&screen.getDisplayMatching(placed.getBounds()).id===chosen.id,'Fenêtre rétablie sans recréation');check('Écrans : réconciliation conserve la fenêtre et les vues',windows.get('qa-placement').win===placed&&placed.isFullScreen());
+  const requested={x:other.workArea.x+70,y:other.workArea.y+50,width:600,height:420};await action(actor,'placeWindow',{id:'qa-placement',displayId:other.id,bounds:requested,fullscreen:false});await until(()=>!placed.isFullScreen()&&Math.abs(placed.getNormalBounds().x-requested.x)<=2,'Placement manuel appliqué');
+  const saved=(await action(actor,'get')).config.windows.find(w=>w.id==='qa-placement');check('Écrans : choix explicite et repère sauvegardés',String(saved.displayId)===String(other.id)&&saved.displayRef.id===other.id&&!saved.fullscreen);
+  check('Écrans : aucune erreur JavaScript de placement',errors.filter(e=>e.type==='console').length===0);
+  await action(actor,'saveLayout',{windows:layoutBefore});
   check('Paramètres de mise à jour présents',await js('!!document.getElementById("updateAuto")&&!!document.getElementById("updateCheck")'));check('Aucune erreur JavaScript',errors.filter(e=>e.type==='console').length===0);
   fs.writeFileSync(path.join(root,'v8-setup-result.json'),JSON.stringify({checks,errors},null,2));
  }finally{for(const s of wss.clients)s.terminate();wss.close();server.closeAllConnections();server.close();}

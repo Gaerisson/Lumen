@@ -1,5 +1,15 @@
 # Versions de Lumen
 
+## 8.2.3
+
+- **Écrans au démarrage** : le moniteur préféré est mémorisé avec son modèle, ses caractéristiques et sa disposition, en complément de l’identifiant Windows. Les anciennes configurations sont migrées à partir de l’écran ou des coordonnées déjà sauvegardés.
+- **Détection tardive** : un écran temporairement absent ne remplace plus le choix enregistré par le premier écran. À son retour, la fenêtre existante retrouve son moniteur et son plein écran, sans recréer les modules.
+- **Déplacements** : les changements automatiques de Windows ne réécrivent plus le choix utilisateur. Les déplacements manuels et les sélections dans le studio restent enregistrés. La position relative est adaptée aux changements de disposition et de zone de travail.
+- **Plein écran** : le placement attend la fin effective de la sortie du plein écran pour appliquer les coordonnées. Les fenêtres réduites ou masquées conservent leur état.
+- **Veille et alertes** : les coordonnées temporaires de veille restent séparées de la position de base ; les destinations d’alerte déjà associées à un écran sont migrées avec lui.
+
+Validation : 159 tests unitaires et 53 contrôles Windows, dont identifiants modifiés, écran absent puis détecté, déplacement automatique, restauration native et changement explicite d’écran. Aucun redémarrage du PC ni changement réel de la configuration des moniteurs n’est nécessaire pour ces tests.
+
 ## 8.2.2
 
 - **Presse-papiers Windows** : la copie de la clé de partage et de l’adresse de retour Spotify utilise l’API native Electron. Les boutons ne dépendent plus de la permission Clipboard du navigateur, qui reste refusée aux pages web.
