@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
-const {BrowserWindow}=require('electron'),{WebSocketServer}=require('ws');
+const {BrowserWindow,clipboard}=require('electron'),{WebSocketServer}=require('ws');
 async function run({control,action,windows,errors,data,invalidateData,integrations,updater}){
  const checks=[],wait=ms=>new Promise(r=>setTimeout(r,ms)),wc=control.webContents,js=async s=>{try{return await wc.executeJavaScript(s);}catch(e){throw Error(e.message+" :: "+s.slice(0,220));}},actor={sender:wc,senderFrame:wc.mainFrame},root=path.join(__dirname,'../../test-results');
  const check=(name,ok)=>{checks.push({name,ok:!!ok});if(!ok)throw Error(name);};async function until(fn,label){for(let i=0;i<120;i++){try{if(await fn())return;}catch{}await wait(75);}throw Error(label);}
@@ -49,6 +49,17 @@ async function run({control,action,windows,errors,data,invalidateData,integratio
    check('PC : sauvegarde sans recréer les fenêtres ni déconnecter HA',windows.get(stored.windows[0].id).win===native&&wss.clients.has(connection));const publicConfig=await action(actor,'get');check('PC : clé chiffrée, absente de la configuration publique',publicConfig.config.remotePeers[0].hasToken&&!JSON.stringify(publicConfig).includes(remoteKey));
    check('PC : la clé enregistrée fonctionne après sauvegarde',(await action(actor,'remoteTest',{id:publicConfig.config.remotePeers[0].id})).connected);
    const key1=await action(actor,'remotePair'),key2=await action(actor,'remotePair');check('PC : copier la clé ne renouvelle pas le jumelage',key1.token===key2.token);
+   const originalCopy=clipboard.writeText,writes=[];try{
+    clipboard.writeText=text=>writes.push(text);if(clipboard.writeText===originalCopy)throw Error('Copie native non simulée');
+    await js('window.browserClipboardCalls=0;Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:async()=>{window.browserClipboardCalls++;throw Error("Write permission denied");}}})');
+    await js('revealSetting("remotePanel");document.getElementById("remoteCopyKey").click()');await until(()=>writes.length===1,'Clé copiée par Windows');
+    check('Copie : clé de partage copiée même si la permission du navigateur est refusée',writes[0]===key1.token&&await js('browserClipboardCalls===0'));
+    const result=await action(actor,'remoteCopyKey');check('Copie : aucune clé retournée au rendu, jumelage conservé',result.copied===true&&!result.token&&writes[1]===key1.token);
+    await until(()=>js('!!document.getElementById("spotifyCopy")'),'Assistant Spotify prêt');await js('revealSetting("modulesPanel");document.getElementById("spotifyCopy").click()');await until(()=>writes.length===3,'Adresse Spotify copiée');
+    check('Copie : adresse Spotify copiée sans permission Web ni rejet non géré',writes[2]==='http://127.0.0.1:32146/callback'&&await js('browserClipboardCalls===0'));
+    let refused=false;const widget=windows.get(stored.windows[0].id).views[0].webContents;try{await action({sender:widget,senderFrame:widget.mainFrame},'remoteCopyKey');}catch{refused=true;}check('Copie : une vue widget ne peut pas copier la clé du serveur',refused&&writes.length===3);
+   }finally{clipboard.writeText=originalCopy;}
+
    await js('document.querySelector("[data-settings-route=studio]").click();lumenStudio.add("proxmox")');check('Studio : contenu de la fenêtre explicitement nommé',await js('document.querySelector(".studio-preview-title").textContent.includes("CONTENU DE LA FENÊTRE")'));
    await js('document.querySelector("[data-studio-metric=showDisk]").click();document.getElementById("studioProxmoxView").value="backups";document.getElementById("studioProxmoxView").dispatchEvent(new Event("change"))');await js('lumenStudio.save()');
    const updated=(await action(actor,'get')).config,px=updated.windows[0].tiles.at(-1);check('Proxmox : filtre et métriques de cette carte enregistrés',px.options.view==='backups'&&px.options.showDisk===false);check('Proxmox : les autres modules restent inchangés',!updated.windows[0].tiles[0].options);

@@ -4,6 +4,7 @@ Les paramètres utilisateurs, captures personnelles, bases locales, journaux, cl
 
 - Home Assistant, Mistral, les jetons Spotify et les clés de jumelage utilisent Electron safeStorage et le profil Windows local.
 - Les pages web intégrées ne reçoivent pas ces clés : contexte isolé, sandbox et accès IPC réservé aux vues locales connues.
+- La copie des clés de partage passe par le presse-papiers natif depuis l’atelier, sans transmettre la clé au rendu. La permission Clipboard des pages web reste refusée.
 - Le partage remote expose uniquement `/v1/status`, en GET et avec une clé aléatoire longue. Il ne permet aucune commande shell ou action sur la maison. Les requêtes de pages web avec Origin sont refusées.
 - La découverte UDP 32146 répond uniquement quand le partage LAN et sa visibilité sont activés. L’annonce se limite à l’identité Lumen, au nom du PC, à sa version et au port HTTP. Aucun quota, projet ou secret n’est envoyé sans authentification. Le partage reste désactivé sur une installation neuve.
 - Le partage des titres de projets est optionnel. Commandes, mises à jour textuelles, chemins locaux, clés HA, tokens Codex et jetons Spotify sont exclus du flux remote.

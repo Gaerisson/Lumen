@@ -1,5 +1,13 @@
 # Versions de Lumen
 
+## 8.2.2
+
+- **Presse-papiers Windows** : la copie de la clé de partage et de l’adresse de retour Spotify utilise l’API native Electron. Les boutons ne dépendent plus de la permission Clipboard du navigateur, qui reste refusée aux pages web.
+- **Clés** : la copie est effectuée dans le processus principal, sans retourner la clé au rendu. Copier une clé existante ne la renouvelle pas. Les vues widget ne peuvent pas demander la copie d’une clé serveur.
+- **Erreurs** : retour compréhensible si le presse-papiers Windows est occupé et bouton désactivé pendant la copie pour éviter les doubles clics.
+
+Validation : 144 tests unitaires et 48 contrôles Windows. Le test force un refus de l’API Clipboard du navigateur, vérifie les deux boutons et simule l’écriture native pour préserver le vrai presse-papiers du PC.
+
 ## 8.2.1
 
 - **Recherche automatique** : démarrage après quelques secondes, puis toutes les 10 minutes au lieu de six heures. Réactivation prise en compte immédiatement, vérification après une veille ou un retour réseau si le dernier essai date de plus de deux minutes. Les erreurs réseau sont réessayées avec une attente progressive ; les limites GitHub restent respectées.
