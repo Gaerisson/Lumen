@@ -1,5 +1,11 @@
 # Versions de Lumen
 
+## 8.2.5
+
+- **Démarrage PowerShell lent** : le contrôle du moteur attend jusqu’à 20 secondes au lieu de 5. Un démarrage de 6 à 7 secondes observé sous charge ne fait plus croire qu’aucun moteur n’est disponible. La réponse du moteur reste vérifiée, le délai reste borné et l’app reste ouverte en cas d’échec.
+
+Validation : 169 tests unitaires, contrôle réel du moteur Windows et installation de l’archive complète. Interface et fonctionnement de l’installation automatique identiques à 8.2.4, validée avec 58 contrôles Windows.
+
 ## 8.2.4
 
 - **Installation automatique optionnelle** : depuis les releases stables GitHub, préavis de 60 secondes et report d’une heure depuis les panneaux ou Connexions. Attend la fermeture des réglages et la fin des alarmes, réveils, détections et résumé du matin. Désactivée par défaut sur les nouveaux profils.
