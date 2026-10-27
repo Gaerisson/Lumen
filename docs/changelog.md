@@ -1,5 +1,13 @@
 # Versions de Lumen
 
+## 8.2.8
+
+- **Compatibilité graphique** : choix sans accélération matérielle dans Services & modules, appliqué avant le démarrage d’Electron à la prochaine relance. Effets de verre natifs, filtres et animations décoratives réduits dans ce mode. Le rendu habituel reste le défaut.
+- **Reprise des cartes** : rechargement d’une carte après crash de son processus de rendu, limité à deux tentatives en cinq minutes. Aucun rechargement automatique des réglages, de l’alarme ou du résumé vocal. Les écouteurs ne sont plus ajoutés à chaque navigation des réglages.
+- **Diagnostic durable** : incidents conservés séparément des relevés Codex fréquents, écriture immédiate et historique limité à huit démarrages. Ajout de la mémoire agrégée des processus et de la mémoire système disponible. L’arrêt normal est consigné après les écritures déjà en cours.
+
+Le mode de compatibilité est un contournement local ; il ne corrige pas à lui seul un pilote graphique défaillant ou un arrêt système Windows.
+
 ## 8.2.7
 
 - **Réactivité** : lectures des journaux Codex et de SQLite sorties du processus de l’interface, dans un worker avec délai et mémoire bornés. Une panne du lecteur conserve les autres modules et attend avant de réessayer.

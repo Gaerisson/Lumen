@@ -1,4 +1,4 @@
-function motionAllowed(){return !document.body.classList.contains('no-motion')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;}
+function motionAllowed(){return !document.body.classList.contains('graphics-compatible')&&!document.body.classList.contains('no-motion')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;}
 function setLiveText(element,value){if(element&&element.textContent!==value)element.textContent=value;}
 function syncMotionPreferences(){if(!motionAllowed())document.getAnimations().filter(a=>a.id==='card-switch'||a.id==='network-path').forEach(a=>a.cancel());}
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',syncMotionPreferences);

@@ -1,6 +1,6 @@
 {
   "name": "lumen-desktop",
-  "version": "8.2.7",
+  "version": "8.2.8",
   "description": "Multi-screen Windows web dashboard",
   "main": "src/main/main.js",
   "scripts": {

@@ -6,7 +6,7 @@
 
 Horloge, mascotte Codex, maison connectée et ordinateurs distants — à la carte, sur plusieurs écrans.
 
-![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.7-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-386b8c) ![Electron](https://img.shields.io/badge/Electron-45-668c99) ![Local first](https://img.shields.io/badge/Local-first-557a69) ![Version](https://img.shields.io/badge/version-8.2.8-8b789c) [![Validation](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaerisson/Lumen/actions/workflows/ci.yml)
 
 **© 2026 Gaerisson · Vibecodé avec OpenAI Codex**
 
@@ -39,6 +39,10 @@ Au premier lancement, **une seule fenêtre de bienvenue** : connecte les service
 | Spotify direct : appareils, volume et lecture | Modules indépendants et recherche de réglages |
 
 ![Ambiance nuit et mascotte en recharge](docs/screens/home-night.jpg)
+
+## Stabilité graphique 8.2.8
+
+Un mode de compatibilité sans accélération matérielle est disponible dans **Services & modules → Rendu graphique**. Il s’applique après relance et réduit les effets coûteux ; la vidéo peut utiliser davantage le processeur. Les cartes d’affichage se rechargent après un crash de leur processus de rendu, avec deux essais maximum en cinq minutes. Les réglages et les scènes vocales ne sont pas rechargés automatiquement. Les incidents restent distincts des relevés courants, avec huit relevés de démarrage archivés et la mémoire de tous les processus Lumen. Ce mode contourne certains problèmes graphiques ; il ne répare pas un pilote ni un plantage Windows.
 
 ## Réactivité 8.2.7
 

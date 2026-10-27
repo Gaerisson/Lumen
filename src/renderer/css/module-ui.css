@@ -42,3 +42,7 @@ body.economy .network-series{filter:none}
 @media(max-width:850px){.standby[data-ambient-role=home] .ambient-home-hero{grid-template-columns:1fr;gap:8px}.standby[data-ambient-role=home] .ambient-mascot-wrap>.ambient-mascot{height:145px;transform:scale(.65)}}
 
 .custom-module-title{font-size:15px;font-weight:600;color:var(--text);padding:12px 18px}.module-compact .module{padding:16px}.module-compact .node-card{padding:14px}.module-compact .node-card header{margin-bottom:12px}.proxmox-backup{display:flex;flex-direction:column;gap:7px;line-height:1.5}.proxmox-backup b{font-weight:500;color:var(--text);display:block}.module-compact .resource{margin:9px 0}
+
+/* Software rendering avoids expensive filters and continuous decorative repaints. */
+body.graphics-compatible,body.graphics-compatible *,body.graphics-compatible *::before,body.graphics-compatible *::after{backdrop-filter:none!important;filter:none!important;will-change:auto!important}
+body.graphics-compatible .ambient-mascot *,body.graphics-compatible .mascot-wrap *,body.graphics-compatible .lumen-atmosphere *,body.graphics-compatible .weather-art *{animation:none!important}

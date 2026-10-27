@@ -1,4 +1,4 @@
-# Lumen 8.2.7 · © Gaerisson
+# Lumen 8.2.8 · © Gaerisson
 
 Vibecodé avec OpenAI Codex.
 
@@ -7,6 +7,8 @@ Extrais toute l’archive dans un dossier accessible en écriture, puis lance Lu
 Ctrl+Alt+L ouvre les réglages ; Ctrl+Alt+Espace libère les écrans. Les fenêtres sont réductibles et leurs positions sont mémorisées. Une installation existante conserve ses panneaux.
 
 Services & modules permet de choisir les connecteurs, le mode économe, les thèmes automatiques et le partage du quota/CPU/RAM. Le serveur est désactivé par défaut, avec une clé de jumelage locale chiffrée.
+
+En cas de gels du pilote graphique, choisis **Rendu graphique → Compatibilité**, puis quitte complètement et relance Lumen. L’accélération matérielle et les effets coûteux sont désactivés pour Lumen ; la vidéo peut consommer davantage de CPU. Le choix normal reste le défaut. Le lancement avec `--software-rendering` force temporairement ce mode sans modifier la configuration. Les incidents locaux et la mémoire de l’ensemble des processus sont conservés dans `data/runtime-health.json`, avec huit relevés précédents dans `data/runtime-history/`. Aucun journal n’est envoyé automatiquement. Un plantage Windows nécessite aussi un diagnostic du système ou du pilote.
 
 Pour un autre PC, extrais une archive propre. Ne transfère pas data/ : les clés sont liées au profil Windows. Connecte Home Assistant ou jumelle le PC Codex dans Connexions → PC distants ([guide](remote.md)).
 
