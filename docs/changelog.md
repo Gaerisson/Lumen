@@ -1,5 +1,16 @@
 # Versions de Lumen
 
+## 8.2.7
+
+- **Réactivité** : lectures des journaux Codex et de SQLite sorties du processus de l’interface, dans un worker avec délai et mémoire bornés. Une panne du lecteur conserve les autres modules et attend avant de réessayer.
+- **Gros historiques** : lecture limitée aux 8 derniers Mio par session ; lignes géantes ignorées avec reprise au prochain événement complet. Cache limité à 16 sessions, événements compactés et secrets masqués avant conservation. Un début de tour absent n’invente pas de durée.
+- **Diagnostic local** : état de santé périodique, retard maximal de la boucle principale et incidents des processus de rendu. Le relevé précédent est conservé au redémarrage. Les fichiers restent dans `data/`, sans envoi automatique.
+
+- **Projets actifs** : sous-agents et contrôles internes exclus avant la sélection des projets, pour compter les chats de travail réels.
+- **Codex distant** : option explicite de partage de toute la section, avec modèle, commandes, progression et durées. Le client conserve ces détails ; secrets reconnaissables masqués, sorties et raisonnement exclus. Actualisation du quota dirigée vers le PC source.
+
+Validation : 183 tests unitaires et 65 contrôles Windows, dont journal synthétique de 100 Mio, lecture réelle SQLite dans un worker Electron, réactivité de l’interface, deux chats avec sous-agents, synchronisation complète serveur/client et affichage des commandes distantes.
+
 ## 8.2.6
 
 - **Lancement du helper Windows** : un lanceur masqué crée l’installateur indépendant avec `Start-Process -WindowStyle Hidden`, au lieu du lancement détaché qui pouvait quitter avec un code 0 sans exécuter le script. La confirmation de préparation du véritable installateur reste obligatoire avant toute fermeture de Lumen.
